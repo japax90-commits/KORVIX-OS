@@ -223,7 +223,7 @@ function SectionLabel({
   icon: Icon,
   title,
 }: {
-  icon: React.ComponentType<{ size?: number }>;
+  icon: React.ElementType;
   title: string;
 }) {
   return (
