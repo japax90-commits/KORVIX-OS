@@ -1,0 +1,1 @@
+Manual validation checklist: open opportunity, edit fields, move stage, verify persistence and error feedback.
