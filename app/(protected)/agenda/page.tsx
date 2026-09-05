@@ -4,7 +4,7 @@ import { Plus, Calendar, Video, Users2, ClipboardList } from "lucide-react";
 import { agendaEvents } from "@/lib/mock-data";
 import type { AgendaEventType } from "@/lib/types";
 
-const typeIcon: Record<AgendaEventType, React.ComponentType<{ size?: number }>> = {
+const typeIcon: Record<AgendaEventType, React.ElementType> = {
   reuniao: Users2,
   visita: Calendar,
   gravacao: Video,
