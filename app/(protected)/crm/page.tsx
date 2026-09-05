@@ -14,6 +14,7 @@ const stages: { key: OpportunityStage; label: string }[] = [
 ];
 
 const channelIcon: Record<string, React.ElementType> = {
+
   whatsapp: Phone,
   ligacao: Phone,
   instagram: Instagram,

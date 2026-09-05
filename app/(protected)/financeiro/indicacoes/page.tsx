@@ -1,7 +1,7 @@
 import { Card, CardHeader } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/Badge";
 import { DataTable, type Column } from "@/components/ui/Table";
-import { FinanceSubnav } from "../page";
+import { FinanceSubnav } from "../FinanceSubnav";
 import { Plus } from "lucide-react";
 import { referralCommissions, formatCurrency } from "@/lib/mock-data";
 import type { ReferralCommission } from "@/lib/types";

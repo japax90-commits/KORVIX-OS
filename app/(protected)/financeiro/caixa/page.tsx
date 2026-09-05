@@ -1,6 +1,6 @@
 import { Card, CardHeader, CardBody } from "@/components/ui/Card";
 import { StatCard } from "@/components/ui/StatCard";
-import { FinanceSubnav } from "../page";
+import { FinanceSubnav } from "../FinanceSubnav";
 import { formatCurrency } from "@/lib/mock-data";
 
 const cashMovements = [
