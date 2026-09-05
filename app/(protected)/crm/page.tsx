@@ -13,7 +13,7 @@ const stages: { key: OpportunityStage; label: string }[] = [
   { key: "negociacao", label: "Negociação" },
 ];
 
-const channelIcon: Record<string, React.ComponentType<{ size?: number }>> = {
+const channelIcon: Record<string, React.ElementType> = {
   whatsapp: Phone,
   ligacao: Phone,
   instagram: Instagram,
