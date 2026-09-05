@@ -15,7 +15,7 @@ const subnav = [
   { href: "/financeiro/caixa", label: "Caixa" },
 ];
 
-export function FinanceSubnav({ active }: { active: string }) {
+function FinanceSubnav({ active }: { active: string }) {
   return (
     <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
       <div className="flex gap-1 border-b border-ink-100 pb-px">
