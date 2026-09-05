@@ -1,0 +1,1 @@
+CRM V2 component added in staging. Integration is intentionally kept separate until CI validates the component in isolation.
