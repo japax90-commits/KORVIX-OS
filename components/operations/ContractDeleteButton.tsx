@@ -1,0 +1,3 @@
+"use client";
+import{useState}from"react";import{createClient}from"@/lib/supabase/client";import{Trash2}from"lucide-react";
+export function ContractDeleteButton({id}:{id:string}){const[busy,setBusy]=useState(false);async function remove(){if(!confirm("Excluir este contrato? Pagamentos históricos não serão excluídos."))return;setBusy(true);const{error}=await createClient().from("contracts").delete().eq("id",id);if(error)alert(error.message);else location.reload();setBusy(false)}return <button disabled={busy} onClick={remove} title="Excluir contrato" className="text-danger hover:opacity-70"><Trash2 size={15}/></button>}
