@@ -5,6 +5,7 @@ import { StatusBadge } from "@/components/ui/Badge";
 import { DataTable, type Column } from "@/components/ui/Table";
 import { Wallet, TrendingDown, PiggyBank, AlertTriangle, Target, Receipt, BadgeDollarSign } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { KORVIX_PLANS } from "@/lib/business/plans";
 import {
   calculateAverageTicket,
   calculateCashBalance,
@@ -97,7 +98,7 @@ export default async function FinanceiroPage() {
         <StatCard label="Conversão" value={`${conversion.toFixed(1)}%`} icon={Target} />
         <StatCard label="Ticket médio" value={money(ticket)} icon={BadgeDollarSign} />
       </div>
-      <Card><CardHeader title="Indicadores comerciais" subtitle="Contratos fechados e ticket médio" /><CardBody className="grid grid-cols-1 gap-3 sm:grid-cols-3"><div><p className="text-xs text-ink-500">Contratos fechados</p><p className="text-xl font-semibold">{won.length}</p></div><div><p className="text-xs text-ink-500">Ticket médio</p><p className="text-xl font-semibold">{money(ticket)}</p></div><div><p className="text-xs text-ink-500">Planos de referência</p><p className="text-xl font-semibold">R$ 1.000 · R$ 2.000 · R$ 3.000</p></div></CardBody></Card>
+      <Card><CardHeader title="Indicadores comerciais" subtitle="Contratos fechados e ticket médio" /><CardBody className="grid grid-cols-1 gap-3 sm:grid-cols-3"><div><p className="text-xs text-ink-500">Contratos fechados</p><p className="text-xl font-semibold">{won.length}</p></div><div><p className="text-xs text-ink-500">Ticket médio</p><p className="text-xl font-semibold">{money(ticket)}</p></div><div><p className="text-xs text-ink-500">Planos de referência</p><p className="text-xl font-semibold">{money(KORVIX_PLANS.Essencial.price)} · {money(KORVIX_PLANS.Intermediário.price)} · {money(KORVIX_PLANS.Completo.price)}</p></div></CardBody></Card>
       <Card><CardHeader title="Últimos pagamentos" subtitle="Pagamentos reais armazenados no Supabase" /><DataTable columns={columns} rows={rows} emptyLabel="Nenhum pagamento registrado." /></Card>
     </div>
   );
