@@ -16,22 +16,24 @@ export default async function DashboardPage(){
     s.from("clients").select("id,operational_status"),
     s.from("payments").select("amount,status,due_date,paid_at"),
     s.from("commissions").select("amount,status"),
-    s.from("contracts").select("value,frequency,status"),
+    s.from("contracts").select("client_name,value,frequency,status,start_date"),
     s.from("tasks").select("id,status,due_date"),
     s.from("av_demands").select("id,status"),
     s.from("cash_movements").select("amount,direction,category"),
   ]);
   const error=oe??ce??pe??me??cte??te??ae??cashError;
   if(error)return <div className="rounded-lg border border-red-200 bg-red-50 p-5 text-sm text-red-700">Erro ao carregar dashboard: {error.message}</div>;
-  const opportunities=opp??[], paymentRows=payments??[], cash=movements??[];
+  const opportunities=opp??[], paymentRows=payments??[], cash=movements??[], contractRows=contracts??[];
   const won=opportunities.filter(x=>x.stage==="ganho"||x.stage==="fechado_ganho");
   const lost=opportunities.filter(x=>x.stage==="perdido"||x.stage==="fechado_perdido");
   const open=opportunities.filter(x=>!["ganho","perdido","fechado_ganho","fechado_perdido"].includes(x.stage));
   const revenue=calculateRevenue(paymentRows), forecast=calculateForecastRevenue(paymentRows), overdue=calculateOverdue(paymentRows);
   const commissionsTotal=calculateCommissions(commissions??[]), expenses=calculateOperationalExpenses(cash), taxes=calculateTaxes(cash);
   const proLabore=calculateProLabore(revenue), netProfit=calculateNetProfit(revenue,commissionsTotal,expenses,proLabore,taxes);
-  const cashBalance=calculateCashBalance(cash), mrr=calculateMRR(contracts??[]), conversion=calculateConversionRate(won.length,lost.length);
-  const ticket=calculateAverageTicket(won.map(x=>Number(x.estimated_value??0)).filter(v=>v>0));
+  const cashBalance=calculateCashBalance(cash), mrr=calculateMRR(contractRows), conversion=calculateConversionRate(won.length,lost.length);
+  const wonClientNames=new Set(won.map(x=>x.client_name.trim().toLowerCase()));
+  const wonContractValues=contractRows.filter(x=>x.status!=="cancelado"&&wonClientNames.has(x.client_name.trim().toLowerCase())).map(x=>Number(x.value??0)).filter(v=>v>0);
+  const ticket=calculateAverageTicket(wonContractValues);
   const monthStart=new Date(); monthStart.setDate(1); monthStart.setHours(0,0,0,0);
   const closedThisMonth=won.filter(x=>new Date(x.created_at)>=monthStart).length, goal=5, remaining=Math.max(goal-closedThisMonth,0);
   const clientRows=clients??[], taskRows=tasks??[], avRows=avDemands??[];
