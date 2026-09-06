@@ -1,68 +1,7 @@
 import { Card, CardHeader, CardBody } from "@/components/ui/Card";
 import { StatCard } from "@/components/ui/StatCard";
 import { FinanceSubnav } from "../FinanceSubnav";
-import { formatCurrency } from "@/lib/mock-data";
-
-const cashMovements = [
-  { id: "cm_1", category: "reserva", direction: "entrada" as const, amount: 5000, description: "Aporte trimestral" },
-  { id: "cm_2", category: "marketing", direction: "saida" as const, amount: 1200, description: "Tráfego pago — campanhas internas" },
-  { id: "cm_3", category: "tecnologia", direction: "saida" as const, amount: 350, description: "Hospedagem e ferramentas" },
-  { id: "cm_4", category: "comercial", direction: "saida" as const, amount: 900, description: "Comissões de indicação" },
-];
-
-const categories = ["reserva", "marketing", "comercial", "tecnologia", "contratacao", "expansao"];
-
-export default function CaixaPage() {
-  const saldo = cashMovements.reduce(
-    (a, m) => a + (m.direction === "entrada" ? m.amount : -m.amount),
-    0
-  );
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold tracking-tight text-ink-900">Financeiro</h2>
-        <p className="text-sm text-ink-500">
-          Painel de caixa — deve sempre existir dinheiro em caixa, categorizado.
-        </p>
-      </div>
-
-      <FinanceSubnav active="/financeiro/caixa" />
-
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-        <StatCard label="Saldo em caixa" value={formatCurrency(saldo)} />
-        <StatCard
-          label="Entradas"
-          value={formatCurrency(cashMovements.filter((m) => m.direction === "entrada").reduce((a, m) => a + m.amount, 0))}
-        />
-        <StatCard
-          label="Saídas"
-          value={formatCurrency(cashMovements.filter((m) => m.direction === "saida").reduce((a, m) => a + m.amount, 0))}
-        />
-      </div>
-
-      <Card>
-        <CardHeader title="Categorias de caixa" subtitle={categories.join(" · ")} />
-        <CardBody className="!p-0">
-          <div className="divide-y divide-ink-100">
-            {cashMovements.map((m) => (
-              <div key={m.id} className="flex items-center justify-between px-5 py-3.5">
-                <div>
-                  <p className="text-sm font-medium text-ink-900">{m.description}</p>
-                  <p className="text-xs capitalize text-ink-500">{m.category}</p>
-                </div>
-                <span
-                  className={`text-sm font-semibold ${
-                    m.direction === "entrada" ? "text-success" : "text-danger"
-                  }`}
-                >
-                  {m.direction === "entrada" ? "+" : "−"} {formatCurrency(m.amount)}
-                </span>
-              </div>
-            ))}
-          </div>
-        </CardBody>
-      </Card>
-    </div>
-  );
-}
+import { createClient } from "@/lib/supabase/server";
+import { CreateCashMovementButton } from "@/components/operations/CreateCashMovementButton";
+const money=(n:number)=>n.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+export default async function CaixaPage(){const s=await createClient();const{data:{user}}=await s.auth.getUser();if(!user)return null;const{data,error}=await s.from("cash_movements").select("id,category,direction,amount,description,movement_date,created_at").order("movement_date",{ascending:false}).order("created_at",{ascending:false});if(error)return <div className="rounded-lg border border-red-200 bg-red-50 p-5 text-sm text-red-700">Erro ao carregar caixa: {error.message}</div>;const rows=data??[],entradas=rows.filter(m=>m.direction==="entrada").reduce((a,m)=>a+Number(m.amount),0),saidas=rows.filter(m=>m.direction==="saida").reduce((a,m)=>a+Number(m.amount),0);return <div className="space-y-6"><div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><h2 className="text-xl font-semibold tracking-tight text-ink-900">Financeiro</h2><p className="text-sm text-ink-500">Caixa real, categorizado e salvo no Supabase.</p></div><CreateCashMovementButton userId={user.id}/></div><FinanceSubnav active="/financeiro/caixa"/><div className="grid grid-cols-2 gap-3 lg:grid-cols-3"><StatCard label="Saldo em caixa" value={money(entradas-saidas)}/><StatCard label="Entradas" value={money(entradas)}/><StatCard label="Saídas" value={money(saidas)}/></div><Card><CardHeader title="Movimentos de caixa" subtitle="Nenhum lançamento fictício"/><CardBody className="!p-0"><div className="divide-y divide-ink-100">{rows.map(m=><div key={m.id} className="flex items-center justify-between px-5 py-3.5"><div><p className="text-sm font-medium text-ink-900">{m.description}</p><p className="text-xs capitalize text-ink-500">{m.category} · {new Date(m.movement_date+"T00:00:00").toLocaleDateString("pt-BR")}</p></div><span className={`text-sm font-semibold ${m.direction==="entrada"?"text-success":"text-danger"}`}>{m.direction==="entrada"?"+":"−"} {money(Number(m.amount))}</span></div>)}{rows.length===0&&<p className="p-5 text-sm text-ink-500">Nenhum movimento registrado. Use Lançar movimento para começar.</p>}</div></CardBody></Card></div>}
