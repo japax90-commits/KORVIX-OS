@@ -1,5 +1,6 @@
 export const KORVIX_PLAN_PRICES = {
   Essencial: 1000,
+  Intermediário: 2000,
   Intermediario: 2000,
   Completo: 3000,
 } as const;
@@ -36,7 +37,7 @@ export function calculateRevenue(payments: FinancialPayment[]) {
 
 export function calculateForecastRevenue(payments: FinancialPayment[]) {
   return payments
-    .filter((p) => p.status === "pendente")
+    .filter((p) => p.status === "pendente" || p.status === "atrasado")
     .reduce((sum, p) => sum + n(p.amount), 0);
 }
 
@@ -70,9 +71,7 @@ export function calculateProLabore(receivedRevenue: number) {
 }
 
 export function calculateCashBalance(movements: CashMovement[]) {
-  const entries = movements.filter((m) => m.direction === "entrada").reduce((sum, m) => sum + n(m.amount), 0);
-  const exits = movements.filter((m) => m.direction === "saida").reduce((sum, m) => sum + n(m.amount), 0);
-  return entries - exits;
+  return calculateCashEntries(movements) - calculateCashExits(movements);
 }
 
 export function calculateCashEntries(movements: CashMovement[]) {
@@ -83,15 +82,30 @@ export function calculateCashExits(movements: CashMovement[]) {
   return movements.filter((m) => m.direction === "saida").reduce((sum, m) => sum + n(m.amount), 0);
 }
 
+const excludedExpenseCategories = ["Comissão", "Comissões", "Pró-labore", "Imposto", "Impostos"];
+
 export function calculateOperationalExpenses(movements: CashMovement[]) {
   return movements
     .filter((m) => m.direction === "saida")
-    .filter((m) => !["Comissão", "Comissões", "Pró-labore"].includes(String(m.category ?? "")))
+    .filter((m) => !excludedExpenseCategories.includes(String(m.category ?? "")))
     .reduce((sum, m) => sum + n(m.amount), 0);
 }
 
-export function calculateNetProfit(receivedRevenue: number, commissions: number, expenses: number, proLabore: number) {
-  return receivedRevenue - commissions - expenses - proLabore;
+export function calculateTaxes(movements: CashMovement[]) {
+  return movements
+    .filter((m) => m.direction === "saida")
+    .filter((m) => ["Imposto", "Impostos"].includes(String(m.category ?? "")))
+    .reduce((sum, m) => sum + n(m.amount), 0);
+}
+
+export function calculateNetProfit(
+  receivedRevenue: number,
+  commissions: number,
+  expenses: number,
+  proLabore: number,
+  taxes = 0,
+) {
+  return receivedRevenue - commissions - expenses - proLabore - taxes;
 }
 
 export function calculateAverageTicket(wonValues: number[]) {
