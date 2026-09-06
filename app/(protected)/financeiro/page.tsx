@@ -32,7 +32,7 @@ export default async function FinanceiroPage() {
     s.from("commissions").select("id,amount,status"),
     s.from("contracts").select("client_name,value,frequency,status,created_at"),
     s.from("cash_movements").select("amount,direction,category"),
-    s.from("opportunities").select("stage,created_at").order("created_at", { ascending: false }).limit(500),
+    s.from("opportunities").select("client_name,stage,created_at").order("created_at", { ascending: false }).limit(500),
   ]);
 
   const error = paymentsError ?? commissionsError ?? contractsError ?? cashError ?? opportunitiesError;
