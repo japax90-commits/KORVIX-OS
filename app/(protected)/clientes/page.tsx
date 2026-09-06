@@ -6,12 +6,13 @@ import { StatCard } from "@/components/ui/StatCard";
 import { ChevronRight, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { CreateClientButton } from "@/components/operations/CreateClientButton";
+import { ClientEditButton } from "@/components/operations/ClientEditButton";
 
 export default async function ClientesPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
-  const { data, error } = await supabase.from("clients").select("id, company_name, contact_name, phone, niche, origin_owner_id, account_manager_id, operational_status, active_contract_value, active_plan_name, entry_date").order("created_at", { ascending: false });
+  const { data, error } = await supabase.from("clients").select("id, company_name, contact_name, phone, niche, origin_owner_id, account_manager_id, operational_status, active_contract_value, active_plan_name, entry_date, created_at").order("created_at", { ascending: false });
   if (error) return <div className="rounded-lg border border-red-200 bg-red-50 p-5 text-sm text-red-700">Não foi possível carregar os clientes: {error.message}</div>;
   const clients = data ?? [];
   const ids = Array.from(new Set(clients.flatMap(c => [c.origin_owner_id, c.account_manager_id]).filter(Boolean)));
@@ -25,7 +26,7 @@ export default async function ClientesPage() {
     {header:"Plano",cell:c=>c.active_plan_name||"—",hideOnMobile:true},
     {header:"Valor",cell:c=>money(c.active_contract_value),hideOnMobile:true},
     {header:"Origem / Atendimento",cell:c=><span className="text-xs text-ink-500">{owner(c.origin_owner_id)} / {owner(c.account_manager_id)}</span>,hideOnMobile:true},
-    {header:"",cell:c=><Link href={`/clientes/${c.id}`} className="flex items-center gap-1 text-xs font-medium text-korvix-600">Ver ficha <ChevronRight size={14}/></Link>}
+    {header:"Ações",cell:c=><div className="flex items-center justify-end gap-1"><ClientEditButton client={c}/><Link href={`/clientes/${c.id}`} className="flex items-center gap-1 rounded-lg px-2 py-2 text-xs font-medium text-korvix-600 hover:bg-korvix-50">Ver ficha <ChevronRight size={14}/></Link></div>}
   ];
   return <div className="space-y-6">
     <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><h2 className="text-xl font-semibold tracking-tight text-ink-900">Clientes</h2><p className="text-sm text-ink-500">Visão 360º e acompanhamento do ciclo de vida operacional.</p></div><CreateClientButton currentUserId={user.id}/></div>
