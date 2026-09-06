@@ -30,9 +30,9 @@ export default async function FinanceiroPage() {
   const [{ data: payments, error: paymentsError }, { data: commissions, error: commissionsError }, { data: contracts, error: contractsError }, { data: cashMovements, error: cashError }, { data: opportunities, error: opportunitiesError }] = await Promise.all([
     s.from("payments").select("id,client_name,type,amount,due_date,status,paid_at").order("due_date", { ascending: false }).limit(500),
     s.from("commissions").select("id,amount,status"),
-    s.from("contracts").select("value,frequency,status"),
+    s.from("contracts").select("client_name,value,frequency,status,created_at"),
     s.from("cash_movements").select("amount,direction,category"),
-    s.from("opportunities").select("stage,estimated_value,created_at").order("created_at", { ascending: false }).limit(500),
+    s.from("opportunities").select("stage,created_at").order("created_at", { ascending: false }).limit(500),
   ]);
 
   const error = paymentsError ?? commissionsError ?? contractsError ?? cashError ?? opportunitiesError;
@@ -54,11 +54,18 @@ export default async function FinanceiroPage() {
   const won = (opportunities ?? []).filter((o) => o.stage === "ganho" || o.stage === "fechado_ganho");
   const lost = (opportunities ?? []).filter((o) => o.stage === "perdido" || o.stage === "fechado_perdido");
   const conversion = calculateConversionRate(won.length, lost.length);
-  const ticket = calculateAverageTicket(won.map((o) => Number(o.estimated_value ?? 0)).filter((v) => v > 0));
+
+  const wonClientNames = new Set(won.map((o) => o.client_name?.trim().toLowerCase()).filter(Boolean));
+  const wonContractValues = (contracts ?? [])
+    .filter((c) => c.status !== "cancelado" && wonClientNames.has(c.client_name.trim().toLowerCase()))
+    .map((c) => Number(c.value ?? 0))
+    .filter((v) => v > 0);
+  const ticket = calculateAverageTicket(wonContractValues);
+
   const monthStart = new Date();
   monthStart.setDate(1);
   monthStart.setHours(0, 0, 0, 0);
-  const closedThisMonth = (opportunities ?? []).filter((o) => (o.stage === "ganho" || o.stage === "fechado_ganho") && new Date(o.created_at) >= monthStart).length;
+  const closedThisMonth = (contracts ?? []).filter((c) => c.status !== "cancelado" && new Date(c.created_at) >= monthStart).length;
   const goal = 5;
   const remaining = Math.max(goal - closedThisMonth, 0);
 
