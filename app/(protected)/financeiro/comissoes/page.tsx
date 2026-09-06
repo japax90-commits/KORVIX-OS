@@ -2,37 +2,6 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/Badge";
 import { DataTable, type Column } from "@/components/ui/Table";
 import { FinanceSubnav } from "../FinanceSubnav";
-import { commissions, formatCurrency, formatDate } from "@/lib/mock-data";
-import type { Commission } from "@/lib/types";
-
-export default function ComissoesPage() {
-  const columns: Column<Commission>[] = [
-    { header: "Vendedor", cell: (c) => c.vendorName },
-    { header: "Cliente", cell: (c) => c.clientName },
-    { header: "Percentual", cell: (c) => `${c.percentage}%`, hideOnMobile: true },
-    { header: "Valor", cell: (c) => formatCurrency(c.amount) },
-    { header: "Status", cell: (c) => <StatusBadge status={c.status} /> },
-    { header: "Data", cell: (c) => formatDate(c.createdAt), hideOnMobile: true },
-  ];
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold tracking-tight text-ink-900">Financeiro</h2>
-        <p className="text-sm text-ink-500">
-          50% na primeira venda, 10% na recorrência — liberada apenas na confirmação do pagamento.
-        </p>
-      </div>
-
-      <FinanceSubnav active="/financeiro/comissoes" />
-
-      <Card>
-        <CardHeader
-          title="Comissões por vendedor"
-          subtitle="Propriedade de origem nunca muda automaticamente"
-        />
-        <DataTable columns={columns} rows={commissions} emptyLabel="Nenhuma comissão gerada ainda." />
-      </Card>
-    </div>
-  );
-}
+import { createClient } from "@/lib/supabase/server";
+const money=(n:number)=>n.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+export default async function ComissoesPage(){const s=await createClient();const{data:{user}}=await s.auth.getUser();if(!user)return null;const{data,error}=await s.from("commissions").select("id,vendor_name,client_name,percentage,amount,status,created_at").order("created_at",{ascending:false});if(error)return <div className="rounded-lg border border-red-200 bg-red-50 p-5 text-sm text-red-700">Erro ao carregar comissões: {error.message}</div>;const rows=data??[];const columns:Column<(typeof rows)[number]>[]=[{header:"Vendedor",cell:c=>c.vendor_name},{header:"Cliente",cell:c=>c.client_name},{header:"Percentual",cell:c=>`${c.percentage}%`,hideOnMobile:true},{header:"Valor",cell:c=>money(Number(c.amount))},{header:"Status",cell:c=><StatusBadge status={c.status}/>},{header:"Data",cell:c=>new Date(c.created_at).toLocaleDateString("pt-BR"),hideOnMobile:true}];return <div className="space-y-6"><div><h2 className="text-xl font-semibold tracking-tight text-ink-900">Financeiro</h2><p className="text-sm text-ink-500">Comissões geradas a partir de pagamentos confirmados.</p></div><FinanceSubnav active="/financeiro/comissoes"/><Card><CardHeader title="Comissões por vendedor" subtitle="Dados reais do Supabase"/><DataTable columns={columns} rows={rows} emptyLabel="Nenhuma comissão gerada ainda."/></Card></div>}

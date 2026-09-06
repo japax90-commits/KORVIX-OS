@@ -1,0 +1,37 @@
+"use client";
+import { useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { Plus, X } from "lucide-react";
+import { KORVIX_PLAN_PRICES } from "@/lib/finance/calculations";
+
+type Client={id:string;company_name:string};
+
+export function PaymentActions({clients}:{clients:Client[]}){
+  const[open,setOpen]=useState(false),[saving,setSaving]=useState(false),[error,setError]=useState("");
+  const[amount,setAmount]=useState("");
+
+  async function submit(fd:FormData){
+    setSaving(true);setError("");
+    const clientId=String(fd.get("client_id")||"");
+    const value=Number(amount||fd.get("amount")||0);
+    if(!clientId||!value||value<0){setError("Informe cliente e valor.");setSaving(false);return;}
+    const client=clients.find(c=>c.id===clientId);
+    const{error:e}=await createClient().from("payments").insert({client_id:clientId,client_name:client?.company_name??"",amount:value,type:String(fd.get("type")||"avulso"),method:String(fd.get("method")||"pix"),status:"pendente",due_date:String(fd.get("due_date")||new Date().toISOString().slice(0,10))});
+    if(e){setError(e.message);setSaving(false);return;}
+    window.location.reload()
+  }
+
+  return <>
+    <button onClick={()=>setOpen(true)} className="flex items-center gap-2 rounded-lg bg-korvix-900 px-4 py-2.5 text-sm font-medium text-white"><Plus size={16}/> Registrar pagamento</button>
+    {open&&<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"><form action={submit} className="w-full max-w-lg space-y-4 rounded-2xl bg-white p-6 shadow-2xl">
+      <div className="flex justify-between"><div><h3 className="text-lg font-semibold">Registrar pagamento</h3><p className="text-sm text-ink-500">O lançamento será salvo no financeiro.</p></div><button type="button" onClick={()=>setOpen(false)}><X/></button></div>
+      <select name="client_id" required className="w-full rounded-lg border p-2.5"><option value="">Selecione o cliente</option>{clients.map(c=><option key={c.id} value={c.id}>{c.company_name}</option>)}</select>
+      <div><label className="mb-2 block text-xs font-medium text-ink-600">Valor real cobrado</label><div className="grid grid-cols-3 gap-2">{Object.entries(KORVIX_PLAN_PRICES).map(([name,value])=><button key={name} type="button" onClick={()=>setAmount(String(value))} className={`rounded-lg border px-2 py-2 text-sm ${amount===String(value)?"border-korvix-600 bg-korvix-50 text-korvix-700":"border-ink-200"}`}>{name}<span className="block font-semibold">R$ {value.toLocaleString("pt-BR")}</span></button>)}</div></div>
+      <input name="amount" value={amount} onChange={e=>setAmount(e.target.value)} type="number" min="0.01" step="0.01" required placeholder="Outro valor" className="w-full rounded-lg border p-2.5"/>
+      <div className="grid grid-cols-2 gap-3"><select name="type" className="rounded-lg border p-2.5"><option value="avulso">Avulso</option><option value="primeira_venda">Primeira venda</option><option value="recorrencia">Recorrência</option></select><select name="method" className="rounded-lg border p-2.5"><option>pix</option><option>credito</option><option>debito</option><option>boleto</option><option>dinheiro</option></select></div>
+      <input name="due_date" type="date" defaultValue={new Date().toISOString().slice(0,10)} className="w-full rounded-lg border p-2.5"/>
+      {error&&<p className="rounded bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+      <div className="flex justify-end gap-2"><button type="button" onClick={()=>setOpen(false)} className="rounded-lg border px-4 py-2">Cancelar</button><button disabled={saving} className="rounded-lg bg-korvix-900 px-4 py-2 text-white">{saving?"Salvando...":"Salvar"}</button></div>
+    </form></div>}
+  </>
+}

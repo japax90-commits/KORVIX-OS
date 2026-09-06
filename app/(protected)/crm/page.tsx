@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { CrmClientV2 } from "./CrmClientV2";
+import { NewOpportunityButton } from "./CrmClient";
 
 type OpportunityRow = {
   id: string;
@@ -20,44 +21,30 @@ type UserRow = { id: string; name: string };
 
 export default async function CrmPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
   const [opportunitiesResult, usersResult] = await Promise.all([
-    supabase
-      .from("opportunities")
-      .select(
-        "id, client_name, origin_owner_id, closing_user_id, channel, stage, priority, estimated_value, probability, next_action, next_followup_at, loss_reason",
-      )
-      .order("created_at", { ascending: false }),
+    supabase.from("opportunities").select("id, client_name, origin_owner_id, closing_user_id, channel, stage, priority, estimated_value, probability, next_action, next_followup_at, loss_reason").order("created_at", { ascending: false }),
     supabase.from("users").select("id, name").eq("active", true).order("name"),
   ]);
 
   if (opportunitiesResult.error || usersResult.error) {
-    return (
-      <div className="rounded-lg border border-red-200 bg-red-50 p-5 text-sm text-red-700">
-        Não foi possível carregar o CRM. Verifique a conexão com o Supabase e tente novamente.
-      </div>
-    );
+    return <div className="rounded-lg border border-red-200 bg-red-50 p-5 text-sm text-red-700">Não foi possível carregar o CRM.</div>;
   }
+
+  const users = (usersResult.data ?? []) as UserRow[];
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold tracking-tight text-ink-900">CRM — Funil de vendas</h2>
-        <p className="text-sm text-ink-500">
-          Leads e oportunidades, do primeiro contato ao fechamento.
-        </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="text-xl font-semibold tracking-tight text-ink-900">CRM — Funil de vendas</h2>
+          <p className="text-sm text-ink-500">Leads e oportunidades, do primeiro contato ao fechamento.</p>
+        </div>
+        <NewOpportunityButton currentUserId={user.id} users={users} />
       </div>
-
-      <CrmClientV2
-        opportunities={(opportunitiesResult.data ?? []) as OpportunityRow[]}
-        users={(usersResult.data ?? []) as UserRow[]}
-        currentUserId={user.id}
-      />
+      <CrmClientV2 opportunities={(opportunitiesResult.data ?? []) as OpportunityRow[]} users={users} currentUserId={user.id} />
     </div>
   );
 }

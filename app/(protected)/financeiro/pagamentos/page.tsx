@@ -2,55 +2,9 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/Badge";
 import { DataTable, type Column } from "@/components/ui/Table";
 import { FinanceSubnav } from "../FinanceSubnav";
-import { CheckCircle2, Plus } from "lucide-react";
-import { payments, formatCurrency, formatDate } from "@/lib/mock-data";
-import type { Payment } from "@/lib/types";
-
-export default function PagamentosPage() {
-  const columns: Column<Payment>[] = [
-    { header: "Cliente", cell: (p) => p.clientName },
-    {
-      header: "Tipo",
-      cell: (p) => (p.type === "primeira_venda" ? "Primeira venda" : "Recorrência"),
-    },
-    { header: "Método", cell: (p) => p.method, hideOnMobile: true },
-    { header: "Valor", cell: (p) => formatCurrency(p.amount) },
-    { header: "Vencimento", cell: (p) => formatDate(p.dueDate), hideOnMobile: true },
-    { header: "Status", cell: (p) => <StatusBadge status={p.status} /> },
-    {
-      header: "",
-      cell: (p) =>
-        p.status === "pendente" || p.status === "atrasado" ? (
-          <button className="focus-ring flex items-center gap-1 text-xs font-medium text-korvix-600 hover:text-korvix-700">
-            <CheckCircle2 size={14} /> Confirmar
-          </button>
-        ) : (
-          <span className="text-xs text-ink-500">—</span>
-        ),
-    },
-  ];
-
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-xl font-semibold tracking-tight text-ink-900">Financeiro</h2>
-          <p className="text-sm text-ink-500">Pagamentos registrados manualmente.</p>
-        </div>
-        <button className="focus-ring flex items-center justify-center gap-2 rounded-lg bg-korvix-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-korvix-800">
-          <Plus size={16} /> Registrar pagamento
-        </button>
-      </div>
-
-      <FinanceSubnav active="/financeiro/pagamentos" />
-
-      <Card>
-        <CardHeader
-          title="Todos os pagamentos"
-          subtitle="Confirmar exige permissão can_confirm_payment; gera comissão automaticamente"
-        />
-        <DataTable columns={columns} rows={payments} />
-      </Card>
-    </div>
-  );
-}
+import { createClient } from "@/lib/supabase/server";
+import { PaymentActions } from "@/components/operations/PaymentActions";
+import { ConfirmPaymentButton } from "@/components/operations/ConfirmPaymentButton";
+import { PaymentEditButton } from "@/components/operations/PaymentEditButton";
+const money=(n:number)=>n.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});const date=(v:string)=>new Date(v).toLocaleDateString("pt-BR");
+export default async function PagamentosPage(){const s=await createClient();const{data:{user}}=await s.auth.getUser();if(!user)return null;const[{data:payments,error},{data:clients}]=await Promise.all([s.from("payments").select("id,client_id,client_name,amount,type,method,status,due_date,paid_at").order("due_date",{ascending:false}),s.from("clients").select("id,company_name").order("company_name")]);if(error)return <div className="rounded-lg border border-red-200 bg-red-50 p-5 text-sm text-red-700">Erro ao carregar pagamentos: {error.message}</div>;const rows=payments??[];const columns:Column<(typeof rows)[number]>[]=[{header:"Cliente",cell:p=>p.client_name},{header:"Tipo",cell:p=>p.type},{header:"Método",cell:p=>p.method,hideOnMobile:true},{header:"Valor",cell:p=>money(Number(p.amount))},{header:"Vencimento",cell:p=>date(p.due_date),hideOnMobile:true},{header:"Status",cell:p=><StatusBadge status={p.status}/>},{header:"Ações",cell:p=><div className="flex items-center gap-3">{p.status==="pendente"||p.status==="atrasado"?<ConfirmPaymentButton id={p.id}/>:null}<PaymentEditButton payment={{...p,amount:Number(p.amount),paid_at:p.paid_at??null}}/></div>}];return <div className="space-y-6"><div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><h2 className="text-xl font-semibold tracking-tight text-ink-900">Financeiro</h2><p className="text-sm text-ink-500">Pagamentos reais armazenados no Supabase.</p></div><PaymentActions clients={clients??[]}/></div><FinanceSubnav active="/financeiro/pagamentos"/><Card><CardHeader title="Todos os pagamentos" subtitle="Novos lançamentos entram como pendentes."/><DataTable columns={columns} rows={rows} emptyLabel="Nenhum pagamento cadastrado. Use Registrar pagamento."/></Card></div>}

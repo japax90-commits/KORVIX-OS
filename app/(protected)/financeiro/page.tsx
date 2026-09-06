@@ -1,36 +1,69 @@
-import Link from "next/link";
-import { Card, CardHeader } from "@/components/ui/Card";
+import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { StatCard } from "@/components/ui/StatCard";
 import { FinanceSubnav } from "./FinanceSubnav";
 import { StatusBadge } from "@/components/ui/Badge";
 import { DataTable, type Column } from "@/components/ui/Table";
-import { Wallet, TrendingDown, PiggyBank, AlertTriangle } from "lucide-react";
-import { payments, commissions, formatCurrency, formatDate } from "@/lib/mock-data";
-import type { Payment } from "@/lib/types";
+import { Wallet, TrendingDown, PiggyBank, AlertTriangle, Target, Receipt, BadgeDollarSign } from "lucide-react";
+import { createClient } from "@/lib/supabase/server";
+import {
+  calculateAverageTicket,
+  calculateCashBalance,
+  calculateCommissions,
+  calculateConversionRate,
+  calculateForecastRevenue,
+  calculateMRR,
+  calculateNetProfit,
+  calculateOperationalExpenses,
+  calculateOverdue,
+  calculateProLabore,
+  calculateRevenue,
+} from "@/lib/finance/calculations";
 
-const subnav = [
-  { href: "/financeiro", label: "Visão geral" },
-  { href: "/financeiro/pagamentos", label: "Pagamentos" },
-  { href: "/financeiro/comissoes", label: "Comissões" },
-  { href: "/financeiro/indicacoes", label: "Indicações" },
-  { href: "/financeiro/caixa", label: "Caixa" },
-];
+const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-export default function FinanceiroPage() {
-  const faturamento = payments.filter((p) => p.status === "pago").reduce((a, p) => a + p.amount, 0);
-  const comissoesTotal = commissions.reduce((a, c) => a + c.amount, 0);
-  const receitaKorvix = faturamento - comissoesTotal;
-  const inadimplencia = payments.filter((p) => p.status === "atrasado").reduce((a, p) => a + p.amount, 0);
+export default async function FinanceiroPage() {
+  const s = await createClient();
+  const { data: { user } } = await s.auth.getUser();
+  if (!user) return null;
 
-  const columns: Column<Payment>[] = [
-    { header: "Cliente", cell: (p) => p.clientName },
-    {
-      header: "Tipo",
-      cell: (p) => (p.type === "primeira_venda" ? "Primeira venda" : "Recorrência"),
-      hideOnMobile: true,
-    },
-    { header: "Valor", cell: (p) => formatCurrency(p.amount) },
-    { header: "Vencimento", cell: (p) => formatDate(p.dueDate), hideOnMobile: true },
+  const [{ data: payments, error: paymentsError }, { data: commissions, error: commissionsError }, { data: contracts, error: contractsError }, { data: cashMovements, error: cashError }, { data: opportunities, error: opportunitiesError }] = await Promise.all([
+    s.from("payments").select("id,client_name,type,amount,due_date,status,paid_at").order("due_date", { ascending: false }).limit(500),
+    s.from("commissions").select("id,amount,status"),
+    s.from("contracts").select("value,frequency,status"),
+    s.from("cash_movements").select("amount,direction,category"),
+    s.from("opportunities").select("stage,estimated_value,created_at").order("created_at", { ascending: false }).limit(500),
+  ]);
+
+  const error = paymentsError ?? commissionsError ?? contractsError ?? cashError ?? opportunitiesError;
+  if (error) return <div className="rounded-lg border border-red-200 bg-red-50 p-5 text-sm text-red-700">Erro ao carregar financeiro: {error.message}</div>;
+
+  const rows = payments ?? [];
+  const revenue = calculateRevenue(rows);
+  const forecast = calculateForecastRevenue(rows);
+  const overdue = calculateOverdue(rows);
+  const commissionTotal = calculateCommissions(commissions ?? []);
+  const expenses = calculateOperationalExpenses(cashMovements ?? []);
+  const proLabore = calculateProLabore(revenue);
+  const netProfit = calculateNetProfit(revenue, commissionTotal, expenses, proLabore);
+  const mrr = calculateMRR(contracts ?? []);
+  const cashBalance = calculateCashBalance(cashMovements ?? []);
+
+  const won = (opportunities ?? []).filter((o) => o.stage === "ganho" || o.stage === "fechado_ganho");
+  const lost = (opportunities ?? []).filter((o) => o.stage === "perdido" || o.stage === "fechado_perdido");
+  const conversion = calculateConversionRate(won.length, lost.length);
+  const ticket = calculateAverageTicket(won.map((o) => Number(o.estimated_value ?? 0)).filter((v) => v > 0));
+  const monthStart = new Date();
+  monthStart.setDate(1);
+  monthStart.setHours(0, 0, 0, 0);
+  const closedThisMonth = (opportunities ?? []).filter((o) => (o.stage === "ganho" || o.stage === "fechado_ganho") && new Date(o.created_at) >= monthStart).length;
+  const goal = 5;
+  const remaining = Math.max(goal - closedThisMonth, 0);
+
+  const columns: Column<(typeof rows)[number]>[] = [
+    { header: "Cliente", cell: (p) => p.client_name },
+    { header: "Tipo", cell: (p) => p.type, hideOnMobile: true },
+    { header: "Valor", cell: (p) => money(Number(p.amount)) },
+    { header: "Vencimento", cell: (p) => new Date(p.due_date).toLocaleDateString("pt-BR"), hideOnMobile: true },
     { header: "Status", cell: (p) => <StatusBadge status={p.status} /> },
   ];
 
@@ -38,28 +71,37 @@ export default function FinanceiroPage() {
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-semibold tracking-tight text-ink-900">Financeiro</h2>
-        <p className="text-sm text-ink-500">
-          Pagamentos, comissões, indicações e caixa -- conceitos financeiros sempre separados.
-        </p>
+        <p className="text-sm text-ink-500">Visão financeira baseada nos dados reais da operação.</p>
       </div>
-
       <FinanceSubnav active="/financeiro" />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="Faturamento bruto" value={formatCurrency(faturamento)} icon={Wallet} />
-        <StatCard label="Receita Korvix" value={formatCurrency(receitaKorvix)} icon={PiggyBank} />
-        <StatCard label="Comissões" value={formatCurrency(comissoesTotal)} icon={TrendingDown} />
-        <StatCard
-          label="Inadimplência"
-          value={formatCurrency(inadimplencia)}
-          icon={AlertTriangle}
-          trend={inadimplencia > 0 ? { positive: false, label: "requer atenção" } : undefined}
-        />
+        <StatCard label="Receita recebida" value={money(revenue)} icon={Wallet} />
+        <StatCard label="Receita prevista" value={money(forecast)} icon={Receipt} />
+        <StatCard label="MRR" value={money(mrr)} icon={BadgeDollarSign} />
+        <StatCard label="Inadimplência" value={money(overdue)} icon={AlertTriangle} />
+        <StatCard label="Comissões" value={money(commissionTotal)} icon={TrendingDown} />
+        <StatCard label="Despesas" value={money(expenses)} icon={TrendingDown} />
+        <StatCard label="Pró-labore (20%)" value={money(proLabore)} icon={PiggyBank} />
+        <StatCard label="Lucro líquido" value={money(netProfit)} icon={PiggyBank} />
+        <StatCard label="Saldo em caixa" value={money(cashBalance)} icon={Wallet} />
+        <StatCard label="Contratos no mês" value={`${closedThisMonth}/${goal}`} icon={Target} />
+        <StatCard label="Faltam para meta" value={String(remaining)} icon={Target} />
+        <StatCard label="Conversão" value={`${conversion.toFixed(1)}%`} icon={Target} />
       </div>
 
       <Card>
-        <CardHeader title="Últimos pagamentos" subtitle="Registro manual, confirmação exige permissão específica" />
-        <DataTable columns={columns} rows={payments} />
+        <CardHeader title="Indicadores comerciais" subtitle="Contratos fechados e ticket médio" />
+        <CardBody className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div><p className="text-xs text-ink-500">Contratos fechados</p><p className="text-xl font-semibold">{won.length}</p></div>
+          <div><p className="text-xs text-ink-500">Ticket médio real</p><p className="text-xl font-semibold">{money(ticket)}</p></div>
+          <div><p className="text-xs text-ink-500">Referência comercial</p><p className="text-xl font-semibold">R$1.000 · R$2.000 · R$3.000</p></div>
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardHeader title="Últimos pagamentos" subtitle="Pagamentos reais armazenados no Supabase" />
+        <DataTable columns={columns} rows={rows} emptyLabel="Nenhum pagamento registrado." />
       </Card>
     </div>
   );
