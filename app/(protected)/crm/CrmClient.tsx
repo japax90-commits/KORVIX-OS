@@ -4,6 +4,7 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Plus, X } from "lucide-react";
 import type { OpportunityChannel, OpportunityStage } from "@/lib/types";
+import { KORVIX_PLAN_PRICES } from "@/lib/finance/calculations";
 
 type User = { id: string; name: string };
 
@@ -23,17 +24,24 @@ const channels: { value: OpportunityChannel; label: string }[] = [
   { value: "outro", label: "Outro" },
 ];
 
+const plans = [
+  ["Essencial", KORVIX_PLAN_PRICES.Essencial],
+  ["Intermediário", KORVIX_PLAN_PRICES.Intermediário],
+  ["Completo", KORVIX_PLAN_PRICES.Completo],
+] as const;
+
 export function NewOpportunityButton({ currentUserId, users }: Props) {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [value, setValue] = useState("1000");
 
   async function submit(formData: FormData) {
     setSaving(true);
     setError("");
     const supabase = createClient();
     const clientName = String(formData.get("client_name") ?? "").trim();
-    const estimatedValue = Number(formData.get("estimated_value") ?? 0);
+    const estimatedValue = Number(value || 0);
     const originOwnerId = String(formData.get("origin_owner_id") ?? currentUserId);
     const channel = String(formData.get("channel") ?? "whatsapp") as OpportunityChannel;
     const priority = String(formData.get("priority") ?? "media");
@@ -86,10 +94,14 @@ export function NewOpportunityButton({ currentUserId, users }: Props) {
                 <label className="block text-sm font-medium text-ink-700">Responsável<select name="origin_owner_id" defaultValue={currentUserId} className="mt-1.5 w-full rounded-lg border border-ink-200 px-3 py-2.5 text-sm">{users.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}</select></label>
                 <label className="block text-sm font-medium text-ink-700">Canal<select name="channel" defaultValue="whatsapp" className="mt-1.5 w-full rounded-lg border border-ink-200 px-3 py-2.5 text-sm">{channels.map((channel) => <option key={channel.value} value={channel.value}>{channel.label}</option>)}</select></label>
               </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label className="block text-sm font-medium text-ink-700">Valor estimado<input name="estimated_value" type="number" min="0" step="0.01" defaultValue="0" className="mt-1.5 w-full rounded-lg border border-ink-200 px-3 py-2.5 text-sm" /></label>
-                <label className="block text-sm font-medium text-ink-700">Prioridade<select name="priority" defaultValue="media" className="mt-1.5 w-full rounded-lg border border-ink-200 px-3 py-2.5 text-sm"><option value="baixa">Baixa</option><option value="media">Média</option><option value="alta">Alta</option><option value="urgente">Urgente</option></select></label>
+              <div>
+                <span className="block text-sm font-medium text-ink-700">Plano / valor estimado</span>
+                <div className="mt-1.5 grid grid-cols-3 gap-2">
+                  {plans.map(([name, price]) => <button key={name} type="button" onClick={() => setValue(String(price))} className={`rounded-lg border px-2 py-2 text-xs ${value === String(price) ? "border-korvix-600 bg-korvix-50 text-korvix-700" : "border-ink-200"}`}>{name}<span className="block text-sm font-semibold">R$ {price.toLocaleString("pt-BR")}</span></button>)}
+                </div>
+                <input name="estimated_value" value={value} onChange={(event) => setValue(event.target.value)} type="number" min="0" step="0.01" className="mt-2 w-full rounded-lg border border-ink-200 px-3 py-2.5 text-sm" />
               </div>
+              <label className="block text-sm font-medium text-ink-700">Prioridade<select name="priority" defaultValue="media" className="mt-1.5 w-full rounded-lg border border-ink-200 px-3 py-2.5 text-sm"><option value="baixa">Baixa</option><option value="media">Média</option><option value="alta">Alta</option><option value="urgente">Urgente</option></select></label>
               {error && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
               <button disabled={saving} type="submit" className="w-full rounded-lg bg-korvix-900 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-60">{saving ? "Salvando..." : "Criar oportunidade"}</button>
             </form>
