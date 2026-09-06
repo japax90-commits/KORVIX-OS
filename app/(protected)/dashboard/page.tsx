@@ -16,7 +16,7 @@ export default async function DashboardPage(){
     s.from("clients").select("id,operational_status"),
     s.from("payments").select("amount,status,due_date,paid_at"),
     s.from("commissions").select("amount,status"),
-    s.from("contracts").select("client_name,value,frequency,status,start_date"),
+    s.from("contracts").select("client_name,value,frequency,status,start_date,created_at"),
     s.from("tasks").select("id,status,due_date"),
     s.from("av_demands").select("id,status"),
     s.from("cash_movements").select("amount,direction,category"),
@@ -35,7 +35,7 @@ export default async function DashboardPage(){
   const wonContractValues=contractRows.filter(x=>x.status!=="cancelado"&&wonClientNames.has(x.client_name.trim().toLowerCase())).map(x=>Number(x.value??0)).filter(v=>v>0);
   const ticket=calculateAverageTicket(wonContractValues);
   const monthStart=new Date(); monthStart.setDate(1); monthStart.setHours(0,0,0,0);
-  const closedThisMonth=won.filter(x=>new Date(x.created_at)>=monthStart).length, goal=5, remaining=Math.max(goal-closedThisMonth,0);
+  const closedThisMonth=contractRows.filter(x=>x.status!=="cancelado"&&new Date(x.created_at)>=monthStart).length, goal=5, remaining=Math.max(goal-closedThisMonth,0);
   const clientRows=clients??[], taskRows=tasks??[], avRows=avDemands??[];
   return <div className="space-y-6">
     <div><h2 className="text-xl font-semibold tracking-tight text-ink-900">Korvix Command Center</h2><p className="text-sm text-ink-500">Visão operacional e financeira em tempo real.</p></div>
