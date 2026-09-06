@@ -1,9 +1,6 @@
-export const KORVIX_PLAN_PRICES = {
-  Essencial: 1000,
-  Intermediário: 2000,
-  Intermediario: 2000,
-  Completo: 3000,
-} as const;
+import { KORVIX_PLAN_PRICES } from "@/lib/business/plans";
+
+export { KORVIX_PLAN_PRICES };
 
 export type FinancialPayment = {
   amount: number | string | null;
