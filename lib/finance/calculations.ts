@@ -1,3 +1,9 @@
+export const KORVIX_PLAN_PRICES = {
+  Essencial: 1000,
+  Intermediario: 2000,
+  Completo: 3000,
+} as const;
+
 export type FinancialPayment = {
   amount: number | string | null;
   status: string;
