@@ -7,7 +7,13 @@ import { currentUser, notifications } from "@/lib/mock-data";
 import { primaryNav, secondaryNav } from "@/lib/navigation";
 import { MobileSidebar } from "./Sidebar";
 
-export function Topbar() {
+export function Topbar({
+  allowedModules,
+  isAdmin,
+}: {
+  allowedModules: string[];
+  isAdmin: boolean;
+}) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const unread = notifications.filter((n) => !n.readAt).length;
@@ -19,7 +25,12 @@ export function Topbar() {
 
   return (
     <>
-      <MobileSidebar open={mobileOpen} onClose={() => setMobileOpen(false)} />
+      <MobileSidebar
+        open={mobileOpen}
+        onClose={() => setMobileOpen(false)}
+        allowedModules={allowedModules}
+        isAdmin={isAdmin}
+      />
 
       <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-ink-100 bg-white/90 px-4 py-3 backdrop-blur sm:px-6">
         <button
@@ -70,30 +81,17 @@ export function Topbar() {
             {notifOpen && (
               <div className="absolute right-0 top-full z-40 mt-2 w-[320px] rounded-xl border border-ink-100 bg-white shadow-panel">
                 <div className="flex items-center justify-between border-b border-ink-100 px-4 py-3">
-                  <p className="text-sm font-semibold text-ink-900">
-                    Notificações
-                  </p>
-                  <span className="text-xs text-korvix-600">
-                    {unread} não lidas
-                  </span>
+                  <p className="text-sm font-semibold text-ink-900">Notificações</p>
+                  <span className="text-xs text-korvix-600">{unread} não lidas</span>
                 </div>
                 <div className="max-h-80 overflow-y-auto">
                   {notifications.map((n) => (
-                    <div
-                      key={n.id}
-                      className="border-b border-ink-100 px-4 py-3 last:border-0 hover:bg-korvix-50/60"
-                    >
+                    <div key={n.id} className="border-b border-ink-100 px-4 py-3 last:border-0 hover:bg-korvix-50/60">
                       <div className="flex items-start gap-2">
-                        {!n.readAt && (
-                          <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-korvix-500" />
-                        )}
+                        {!n.readAt && <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-korvix-500" />}
                         <div className={n.readAt ? "pl-3.5" : ""}>
-                          <p className="text-[13px] font-medium text-ink-900">
-                            {n.title}
-                          </p>
-                          <p className="mt-0.5 text-xs text-ink-500">
-                            {n.body}
-                          </p>
+                          <p className="text-[13px] font-medium text-ink-900">{n.title}</p>
+                          <p className="mt-0.5 text-xs text-ink-500">{n.body}</p>
                         </div>
                       </div>
                     </div>
@@ -108,12 +106,8 @@ export function Topbar() {
               {currentUser.avatarInitials}
             </div>
             <div className="hidden leading-tight sm:block">
-              <p className="text-[13px] font-medium text-ink-900">
-                {currentUser.name}
-              </p>
-              <p className="text-[11px] text-ink-500">
-                {currentUser.role === "ceo" ? "CEO" : currentUser.role}
-              </p>
+              <p className="text-[13px] font-medium text-ink-900">{currentUser.name}</p>
+              <p className="text-[11px] text-ink-500">{currentUser.role === "ceo" ? "CEO" : currentUser.role}</p>
             </div>
             <ChevronDown size={14} className="hidden text-ink-500 sm:block" />
           </div>
