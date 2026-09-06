@@ -1,50 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { CrmClientV2 } from "./CrmClientV2";
 import { NewOpportunityButton } from "./CrmClient";
-
-type OpportunityRow = {
-  id: string;
-  client_name: string;
-  origin_owner_id: string | null;
-  closing_user_id: string | null;
-  channel: string | null;
-  stage: string;
-  priority: string | null;
-  estimated_value: number | null;
-  probability: number | null;
-  next_action: string | null;
-  next_followup_at: string | null;
-  loss_reason: string | null;
-};
-
-type UserRow = { id: string; name: string };
-
-export default async function CrmPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
-
-  const [opportunitiesResult, usersResult] = await Promise.all([
-    supabase.from("opportunities").select("id, client_name, origin_owner_id, closing_user_id, channel, stage, priority, estimated_value, probability, next_action, next_followup_at, loss_reason").order("created_at", { ascending: false }),
-    supabase.from("users").select("id, name").eq("active", true).order("name"),
-  ]);
-
-  if (opportunitiesResult.error || usersResult.error) {
-    return <div className="rounded-lg border border-red-200 bg-red-50 p-5 text-sm text-red-700">Não foi possível carregar o CRM.</div>;
-  }
-
-  const users = (usersResult.data ?? []) as UserRow[];
-
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h2 className="text-xl font-semibold tracking-tight text-ink-900">CRM — Funil de vendas</h2>
-          <p className="text-sm text-ink-500">Leads e oportunidades, do primeiro contato ao fechamento.</p>
-        </div>
-        <NewOpportunityButton currentUserId={user.id} users={users} />
-      </div>
-      <CrmClientV2 opportunities={(opportunitiesResult.data ?? []) as OpportunityRow[]} users={users} currentUserId={user.id} />
-    </div>
-  );
+import { isKorvixAdmin } from "@/lib/auth/permissions";
+type OpportunityRow={id:string;client_name:string;origin_owner_id:string|null;closing_user_id:string|null;channel:string|null;stage:string;priority:string|null;estimated_value:number|null;probability:number|null;next_action:string|null;next_followup_at:string|null;loss_reason:string|null};
+type UserRow={id:string;name:string};
+export default async function CrmPage(){const supabase=await createClient();const{data:{user}}=await supabase.auth.getUser();if(!user)return null;const[{data:opportunities,error:opError},{data:users,userError},{data:profile}]=await Promise.all([supabase.from("opportunities").select("id, client_name, origin_owner_id, closing_user_id, channel, stage, priority, estimated_value, probability, next_action, next_followup_at, loss_reason").order("created_at",{ascending:false}),supabase.from("users").select("id,name").eq("active",true).order("name"),supabase.from("users").select("id,name,email,role,active").eq("id",user.id).maybeSingle()]);if(opError||userError)return <div className="rounded-lg border border-red-200 bg-red-50 p-5 text-sm text-red-700">Não foi possível carregar o CRM.</div>;const userRows=(users??[]) as UserRow[];const admin=isKorvixAdmin(profile);return <div className="space-y-6"><div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><h2 className="text-xl font-semibold tracking-tight text-ink-900">CRM — Funil de vendas</h2><p className="text-sm text-ink-500">Leads privados por responsável, com gestão administrativa.</p></div><NewOpportunityButton currentUserId={user.id} users={userRows} isAdmin={admin}/></div><CrmClientV2 opportunities={(opportunities??[]) as OpportunityRow[]} users={userRows} currentUserId={user.id} isAdmin={admin}/></div>;
 }
