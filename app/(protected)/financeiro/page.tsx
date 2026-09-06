@@ -1,66 +1,9 @@
-import Link from "next/link";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { StatCard } from "@/components/ui/StatCard";
 import { FinanceSubnav } from "./FinanceSubnav";
 import { StatusBadge } from "@/components/ui/Badge";
 import { DataTable, type Column } from "@/components/ui/Table";
 import { Wallet, TrendingDown, PiggyBank, AlertTriangle } from "lucide-react";
-import { payments, commissions, formatCurrency, formatDate } from "@/lib/mock-data";
-import type { Payment } from "@/lib/types";
-
-const subnav = [
-  { href: "/financeiro", label: "Visão geral" },
-  { href: "/financeiro/pagamentos", label: "Pagamentos" },
-  { href: "/financeiro/comissoes", label: "Comissões" },
-  { href: "/financeiro/indicacoes", label: "Indicações" },
-  { href: "/financeiro/caixa", label: "Caixa" },
-];
-
-export default function FinanceiroPage() {
-  const faturamento = payments.filter((p) => p.status === "pago").reduce((a, p) => a + p.amount, 0);
-  const comissoesTotal = commissions.reduce((a, c) => a + c.amount, 0);
-  const receitaKorvix = faturamento - comissoesTotal;
-  const inadimplencia = payments.filter((p) => p.status === "atrasado").reduce((a, p) => a + p.amount, 0);
-
-  const columns: Column<Payment>[] = [
-    { header: "Cliente", cell: (p) => p.clientName },
-    {
-      header: "Tipo",
-      cell: (p) => (p.type === "primeira_venda" ? "Primeira venda" : "Recorrência"),
-      hideOnMobile: true,
-    },
-    { header: "Valor", cell: (p) => formatCurrency(p.amount) },
-    { header: "Vencimento", cell: (p) => formatDate(p.dueDate), hideOnMobile: true },
-    { header: "Status", cell: (p) => <StatusBadge status={p.status} /> },
-  ];
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold tracking-tight text-ink-900">Financeiro</h2>
-        <p className="text-sm text-ink-500">
-          Pagamentos, comissões, indicações e caixa -- conceitos financeiros sempre separados.
-        </p>
-      </div>
-
-      <FinanceSubnav active="/financeiro" />
-
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="Faturamento bruto" value={formatCurrency(faturamento)} icon={Wallet} />
-        <StatCard label="Receita Korvix" value={formatCurrency(receitaKorvix)} icon={PiggyBank} />
-        <StatCard label="Comissões" value={formatCurrency(comissoesTotal)} icon={TrendingDown} />
-        <StatCard
-          label="Inadimplência"
-          value={formatCurrency(inadimplencia)}
-          icon={AlertTriangle}
-          trend={inadimplencia > 0 ? { positive: false, label: "requer atenção" } : undefined}
-        />
-      </div>
-
-      <Card>
-        <CardHeader title="Últimos pagamentos" subtitle="Registro manual, confirmação exige permissão específica" />
-        <DataTable columns={columns} rows={payments} />
-      </Card>
-    </div>
-  );
-}
+import { createClient } from "@/lib/supabase/server";
+const money=(n:number)=>n.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+export default async function FinanceiroPage(){const s=await createClient();const{data:{user}}=await s.auth.getUser();if(!user)return null;const[{data:payments,error},{data:commissions}]=await Promise.all([s.from("payments").select("id,client_name,type,amount,due_date,status").order("due_date",{ascending:false}).limit(100),s.from("commissions").select("amount")]);if(error)return <div className="rounded-lg border border-red-200 bg-red-50 p-5 text-sm text-red-700">Erro ao carregar financeiro: {error.message}</div>;const rows=payments??[];const faturamento=rows.filter(p=>p.status==="pago").reduce((a,p)=>a+Number(p.amount||0),0),comissoesTotal=(commissions??[]).reduce((a,c)=>a+Number(c.amount||0),0),inadimplencia=rows.filter(p=>p.status==="atrasado").reduce((a,p)=>a+Number(p.amount||0),0);const columns:Column<(typeof rows)[number]>[]=[{header:"Cliente",cell:p=>p.client_name},{header:"Tipo",cell:p=>p.type,hideOnMobile:true},{header:"Valor",cell:p=>money(Number(p.amount))},{header:"Vencimento",cell:p=>new Date(p.due_date).toLocaleDateString("pt-BR"),hideOnMobile:true},{header:"Status",cell:p=><StatusBadge status={p.status}/>}];return <div className="space-y-6"><div><h2 className="text-xl font-semibold tracking-tight text-ink-900">Financeiro</h2><p className="text-sm text-ink-500">Dados reais do Supabase.</p></div><FinanceSubnav active="/financeiro"/><div className="grid grid-cols-2 gap-3 lg:grid-cols-4"><StatCard label="Faturamento bruto" value={money(faturamento)} icon={Wallet}/><StatCard label="Receita Korvix" value={money(faturamento-comissoesTotal)} icon={PiggyBank}/><StatCard label="Comissões" value={money(comissoesTotal)} icon={TrendingDown}/><StatCard label="Inadimplência" value={money(inadimplencia)} icon={AlertTriangle}/></div><Card><CardHeader title="Últimos pagamentos" subtitle="Dados reais"/><DataTable columns={columns} rows={rows} emptyLabel="Nenhum pagamento registrado."/></Card></div>}
