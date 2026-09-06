@@ -59,6 +59,20 @@ export function ConfirmPaymentButton({ id }: { id: string }) {
             client_name: payment.client_name,
           });
           if (commissionError) throw new Error(commissionError.message);
+
+          const commissionCashDescription = `Comissão do pagamento · ${id}`;
+          const { data: existingCommissionCash } = await supabase.from("cash_movements").select("id").eq("description", commissionCashDescription).maybeSingle();
+          if (!existingCommissionCash) {
+            const { error: commissionCashError } = await supabase.from("cash_movements").insert({
+              category: "Comissões",
+              direction: "saida",
+              amount: commissionAmount,
+              description: commissionCashDescription,
+              movement_date: new Date().toISOString().slice(0, 10),
+              created_by: vendorId,
+            });
+            if (commissionCashError) throw new Error(commissionCashError.message);
+          }
         }
       }
 
