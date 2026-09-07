@@ -9,8 +9,7 @@ export type UserProfile = {
 export function isKorvixAdmin(profile: UserProfile | null | undefined) {
   return Boolean(
     profile?.active &&
-      (profile.role === "ceo" ||
-        profile.email?.toLowerCase() === "korvixdigital@gmail.com")
+      profile.email?.toLowerCase() === "korvixdigital@gmail.com"
   );
 }
 
