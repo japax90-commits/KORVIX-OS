@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Calendar, ChevronLeft, ChevronRight, ClipboardList, Pencil, Plus, Trash2, Users2, Video } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { useAction } from "@/lib/hooks/useAction";
+import { onSubmitForm, useAction } from "@/lib/hooks/useAction";
 import { dayKey, formatDate, formatTime, fromDateTimeLocal, toDateTimeLocal, todayISO } from "@/lib/format";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
@@ -29,14 +29,17 @@ const STATUSES = [
 const SHARED = "__shared__";
 
 function EventModal({ open, onClose, event, userId, userName, users, isAdmin }: { open: boolean; onClose: () => void; event?: AgendaEvent; userId: string; userName: string; users: User[]; isAdmin: boolean }) {
-  const { run, busy, error, setError } = useAction();
+  const { run, busy, error, fieldErrors, fail } = useAction();
 
   async function submit(fd: FormData) {
     const title = String(fd.get("title") || "").trim();
     const startAt = fromDateTimeLocal(String(fd.get("start_at") || ""));
     const endAt = fromDateTimeLocal(String(fd.get("end_at") || ""));
-    if (!title || !startAt) return setError("Informe título e início.");
-    if (endAt && endAt < startAt) return setError("O término deve ser depois do início.");
+    const errors: Record<string, string> = {};
+    if (!title) errors.title = "Informe o título.";
+    if (!startAt) errors.start_at = "Informe o início.";
+    else if (endAt && endAt < startAt) errors.end_at = "O término deve ser depois do início.";
+    if (Object.keys(errors).length) return fail(errors);
     const responsible = String(fd.get("responsible_user_id") || userId);
     const shared = responsible === SHARED;
     // Não-admins só criam eventos próprios ou compartilhados (regra do RLS).
@@ -64,20 +67,20 @@ function EventModal({ open, onClose, event, userId, userName, users, isAdmin }: 
       description="Eventos compartilhados aparecem para toda a equipe."
       footer={<><button type="button" onClick={onClose} className={buttonClass("secondary")}>Cancelar</button><button type="submit" form={`event-${event?.id ?? "new"}`} disabled={busy} className={buttonClass("primary")}>{busy ? "Salvando..." : event ? "Salvar" : "Criar evento"}</button></>}
     >
-      <form id={`event-${event?.id ?? "new"}`} action={submit} className="grid gap-4 sm:grid-cols-2">
-        <Field label="Título" className="sm:col-span-2"><Input name="title" defaultValue={event?.title} required autoFocus /></Field>
-        <Field label="Tipo"><Select name="type" defaultValue={event?.type ?? "reuniao"}>{TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}</Select></Field>
-        <Field label="Status"><Select name="status" defaultValue={event?.status ?? "agendado"}>{STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}</Select></Field>
-        <Field label="Início"><Input name="start_at" type="datetime-local" defaultValue={toDateTimeLocal(event?.start_at)} required /></Field>
-        <Field label="Término (opcional)"><Input name="end_at" type="datetime-local" defaultValue={toDateTimeLocal(event?.end_at)} /></Field>
-        <Field label="Responsável">
+      <form id={`event-${event?.id ?? "new"}`} onSubmit={onSubmitForm(submit)} className="grid gap-4 sm:grid-cols-2">
+        <Field label="Título" className="sm:col-span-2" error={fieldErrors.title}><Input name="title" defaultValue={event?.title} required autoFocus /></Field>
+        <Field label="Tipo" error={fieldErrors.type}><Select name="type" defaultValue={event?.type ?? "reuniao"}>{TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}</Select></Field>
+        <Field label="Status" error={fieldErrors.status}><Select name="status" defaultValue={event?.status ?? "agendado"}>{STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}</Select></Field>
+        <Field label="Início" error={fieldErrors.start_at}><Input name="start_at" type="datetime-local" defaultValue={toDateTimeLocal(event?.start_at)} required /></Field>
+        <Field label="Término (opcional)" error={fieldErrors.end_at}><Input name="end_at" type="datetime-local" defaultValue={toDateTimeLocal(event?.end_at)} /></Field>
+        <Field label="Responsável" error={fieldErrors.responsible_user_id}>
           <Select name="responsible_user_id" defaultValue={defaultResponsible}>
             {(isAdmin ? users : users.filter((u) => u.id === userId)).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
             {!isAdmin && !users.some((u) => u.id === userId) && <option value={userId}>{userName}</option>}
             <option value={SHARED}>Compartilhado com a equipe</option>
           </Select>
         </Field>
-        <Field label="Relacionado a (opcional)" hint="Use o nome do cliente para aparecer na ficha dele."><Input name="related_to" defaultValue={event?.related_to ?? ""} /></Field>
+        <Field label="Relacionado a (opcional)" hint="Use o nome do cliente para aparecer na ficha dele." error={fieldErrors.related_to}><Input name="related_to" defaultValue={event?.related_to ?? ""} /></Field>
         <div className="sm:col-span-2"><FormError message={error} /></div>
       </form>
     </Modal>

@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { canAccessModule, isKorvixAdmin } from "@/lib/auth/permissions";
 import { ClientEditButton } from "@/components/operations/ClientForm";
 import { formatDate, formatDateTime, formatMoney, humanize } from "@/lib/format";
+import { requireModule } from "@/lib/auth/server";
 
 function Empty({ children }: { children: React.ReactNode }) {
   return <p className="text-sm text-ink-500">{children}</p>;
@@ -25,6 +26,7 @@ function Row({ title, meta, badge }: { title: React.ReactNode; meta: React.React
 }
 
 export default async function ClientDetailPage({ params }: { params: { id: string } }) {
+  await requireModule("clientes");
   const s = await createClient();
   const { data: { user } } = await s.auth.getUser();
   if (!user) return null;

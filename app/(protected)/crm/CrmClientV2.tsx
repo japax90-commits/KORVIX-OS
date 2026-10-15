@@ -46,6 +46,7 @@ export function CrmClientV2({ opportunities, users, currentUserId, isAdmin = fal
   const [selected, setSelected] = useState<Row | null>(null);
   const [error, setError] = useState("");
   const [formError, setFormError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [query, setQuery] = useState("");
   const [owner, setOwner] = useState("");
@@ -62,6 +63,7 @@ export function CrmClientV2({ opportunities, users, currentUserId, isAdmin = fal
 
   function open(item: Row) {
     setFormError("");
+    setFieldErrors({});
     setLossStage(normalizeStage(item.stage));
     setSelected(item);
   }
@@ -102,17 +104,21 @@ export function CrmClientV2({ opportunities, users, currentUserId, isAdmin = fal
 
   async function save(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!selected) return;
+    if (!selected || saving) return;
     setFormError("");
+    setFieldErrors({});
     const f = new FormData(e.currentTarget);
     const stage = normalizeStage(String(f.get("stage") || "lead"));
     const clientName = String(f.get("client_name") || "").trim();
     const lossReason = String(f.get("loss_reason") || "").trim();
-    if (!clientName) return setFormError("Informe o cliente.");
-    if (stage === "perdido" && !lossReason) return setFormError("Informe o motivo da perda.");
+    const errors: Record<string, string> = {};
+    if (!clientName) errors.client_name = "Informe o cliente.";
+    if (stage === "perdido" && !lossReason) errors.loss_reason = "Informe o motivo da perda.";
     const estimatedValue = Number(f.get("estimated_value") || 0);
     const probability = Number(f.get("probability") ?? probabilities[stage]);
-    if (!Number.isFinite(estimatedValue) || estimatedValue < 0 || !Number.isFinite(probability) || probability < 0 || probability > 100) return setFormError("Informe valor e probabilidade válidos (0 a 100%).");
+    if (!Number.isFinite(estimatedValue) || estimatedValue < 0) errors.estimated_value = "Informe um valor válido.";
+    if (!Number.isFinite(probability) || probability < 0 || probability > 100) errors.probability = "Use um valor entre 0 e 100.";
+    if (Object.keys(errors).length) return setFieldErrors(errors);
     setSaving(true);
     const payload = {
       client_name: clientName,
@@ -218,26 +224,26 @@ export function CrmClientV2({ opportunities, users, currentUserId, isAdmin = fal
       >
         {selected && (
           <form id="edit-opportunity" key={selected.id} onSubmit={save} className="grid gap-4 md:grid-cols-2">
-            <Field label="Cliente"><Input name="client_name" defaultValue={selected.client_name} required /></Field>
-            <Field label="Etapa">
+            <Field label="Cliente" error={fieldErrors.client_name}><Input name="client_name" defaultValue={selected.client_name} required /></Field>
+            <Field label="Etapa" error={fieldErrors.stage}>
               <Select name="stage" value={lossStage} onChange={(e) => setLossStage(normalizeStage(e.target.value))}>{stages.map((s) => <option key={s} value={s}>{labels[s]}</option>)}</Select>
             </Field>
-            <Field label="Prioridade"><Select name="priority" defaultValue={selected.priority || "media"}>{PRIORITIES.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}</Select></Field>
-            <Field label="Responsável pelo fechamento" hint={isAdmin ? undefined : "Somente a administração redistribui leads."}>
+            <Field label="Prioridade" error={fieldErrors.priority}><Select name="priority" defaultValue={selected.priority || "media"}>{PRIORITIES.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}</Select></Field>
+            <Field label="Responsável pelo fechamento" hint={isAdmin ? undefined : "Somente a administração redistribui leads."} error={fieldErrors.closing_user_id}>
               <Select name="closing_user_id" defaultValue={selected.closing_user_id || currentUserId} disabled={!isAdmin}>{users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</Select>
             </Field>
-            <Field label="Canal">
+            <Field label="Canal" error={fieldErrors.channel}>
               <Select name="channel" defaultValue={selected.channel || "whatsapp"}>
                 {CHANNELS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
                 {selected.channel && !channelLabel[selected.channel] && <option value={selected.channel}>{selected.channel}</option>}
               </Select>
             </Field>
-            <Field label="Valor estimado (R$)"><Input name="estimated_value" type="number" min="0" step="0.01" defaultValue={selected.estimated_value || 0} /></Field>
-            <Field label="Probabilidade (%)"><Input name="probability" type="number" min="0" max="100" defaultValue={selected.probability ?? probabilities[normalizeStage(selected.stage)]} /></Field>
-            <Field label="Próximo follow-up"><Input name="next_followup_at" type="datetime-local" defaultValue={toDateTimeLocal(selected.next_followup_at)} /></Field>
-            <Field label="Próxima ação" className="md:col-span-2"><Input name="next_action" defaultValue={selected.next_action || ""} placeholder="Ex.: enviar proposta revisada" /></Field>
+            <Field label="Valor estimado (R$)" error={fieldErrors.estimated_value}><Input name="estimated_value" type="number" min="0" step="0.01" defaultValue={selected.estimated_value || 0} /></Field>
+            <Field label="Probabilidade (%)" error={fieldErrors.probability}><Input name="probability" type="number" min="0" max="100" defaultValue={selected.probability ?? probabilities[normalizeStage(selected.stage)]} /></Field>
+            <Field label="Próximo follow-up" error={fieldErrors.next_followup_at}><Input name="next_followup_at" type="datetime-local" defaultValue={toDateTimeLocal(selected.next_followup_at)} /></Field>
+            <Field label="Próxima ação" className="md:col-span-2" error={fieldErrors.next_action}><Input name="next_action" defaultValue={selected.next_action || ""} placeholder="Ex.: enviar proposta revisada" /></Field>
             {lossStage === "perdido" && (
-              <Field label="Motivo da perda" className="md:col-span-2"><Textarea name="loss_reason" defaultValue={selected.loss_reason || ""} required /></Field>
+              <Field label="Motivo da perda" className="md:col-span-2" error={fieldErrors.loss_reason}><Textarea name="loss_reason" defaultValue={selected.loss_reason || ""} required /></Field>
             )}
             <div className="md:col-span-2"><FormError message={formError} /></div>
           </form>

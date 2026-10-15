@@ -1,11 +1,11 @@
-import { forwardRef } from "react";
+import { Children, cloneElement, forwardRef, isValidElement, useId } from "react";
 import { cn } from "@/lib/utils";
 
 // Estilos únicos de formulário e botões, para que todos os módulos tenham a
 // mesma altura de controle, borda, foco e tipografia.
 
 export const inputClass =
-  "focus-ring block w-full rounded-lg border border-ink-300 bg-white px-3 py-2.5 text-sm text-ink-900 placeholder:text-ink-400 disabled:cursor-not-allowed disabled:bg-ink-50 disabled:text-ink-500";
+  "focus-ring block w-full rounded-lg border border-ink-300 bg-white px-3 py-2.5 text-sm text-ink-900 placeholder:text-ink-400 aria-[invalid=true]:border-danger aria-[invalid=true]:ring-1 aria-[invalid=true]:ring-danger/30 disabled:cursor-not-allowed disabled:bg-ink-50 disabled:text-ink-500";
 
 const buttonVariants = {
   primary: "bg-korvix-900 text-white hover:bg-korvix-800",
@@ -25,19 +25,35 @@ export function buttonClass(variant: keyof typeof buttonVariants = "primary", cl
 export function Field({
   label,
   hint,
+  error,
   className,
   children,
 }: {
   label: string;
   hint?: string;
+  /** Mensagem de erro exibida junto ao campo (marca o controle com aria-invalid). */
+  error?: string;
   className?: string;
   children: React.ReactNode;
 }) {
+  const errorId = useId();
+  const control = error
+    ? Children.map(children, (child) =>
+        // Marca o controle (Input/Select/Textarea); ignora auxiliares como <datalist>.
+        isValidElement<Record<string, unknown>>(child) && child.type !== "datalist"
+          ? cloneElement(child, { "aria-invalid": true, "aria-describedby": errorId })
+          : child,
+      )
+    : children;
   return (
     <label className={cn("block", className)}>
       <span className="mb-1.5 block text-sm font-medium text-ink-700">{label}</span>
-      {children}
-      {hint && <span className="mt-1 block text-xs text-ink-500">{hint}</span>}
+      {control}
+      {error ? (
+        <span id={errorId} role="alert" className="mt-1 block text-xs font-medium text-danger">{error}</span>
+      ) : (
+        hint && <span className="mt-1 block text-xs text-ink-500">{hint}</span>
+      )}
     </label>
   );
 }

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Check, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { useAction } from "@/lib/hooks/useAction";
+import { onSubmitForm, useAction } from "@/lib/hooks/useAction";
 import { todayISO } from "@/lib/format";
 import { Modal } from "@/components/ui/Modal";
 import { Field, FormError, IconButton, Input, Select, buttonClass } from "@/components/ui/Form";
@@ -13,10 +13,10 @@ export type TaskRecord = { id: string; title: string; assigned_to_id: string | n
 type User = { id: string; name: string };
 
 function TaskModal({ open, onClose, task, userId, userName, users, isAdmin }: { open: boolean; onClose: () => void; task?: TaskRecord; userId: string; userName: string; users: User[]; isAdmin: boolean }) {
-  const { run, busy, error, setError } = useAction();
+  const { run, busy, error, fieldErrors, fail } = useAction();
   async function submit(fd: FormData) {
     const title = String(fd.get("title") || "").trim();
-    if (!title) return setError("Informe a tarefa.");
+    if (!title) return fail({ title: "Informe a tarefa." });
     // Sem permissão de administrador a tarefa fica com o próprio usuário (RLS).
     const assignedId = isAdmin ? String(fd.get("assigned_to_id") || userId) : task?.assigned_to_id ?? userId;
     const payload = {
@@ -39,19 +39,19 @@ function TaskModal({ open, onClose, task, userId, userName, users, isAdmin }: { 
       title={task ? "Editar tarefa" : "Nova tarefa"}
       footer={<><button type="button" onClick={onClose} className={buttonClass("secondary")}>Cancelar</button><button type="submit" form={`task-${task?.id ?? "new"}`} disabled={busy} className={buttonClass("primary")}>{busy ? "Salvando..." : task ? "Salvar" : "Criar tarefa"}</button></>}
     >
-      <form id={`task-${task?.id ?? "new"}`} action={submit} className="grid gap-4 sm:grid-cols-2">
-        <Field label="Tarefa" className="sm:col-span-2"><Input name="title" defaultValue={task?.title} required autoFocus /></Field>
-        <Field label="Responsável" hint={isAdmin ? undefined : "Somente a administração distribui tarefas."}>
+      <form id={`task-${task?.id ?? "new"}`} onSubmit={onSubmitForm(submit)} className="grid gap-4 sm:grid-cols-2">
+        <Field label="Tarefa" className="sm:col-span-2" error={fieldErrors.title}><Input name="title" defaultValue={task?.title} required autoFocus /></Field>
+        <Field label="Responsável" hint={isAdmin ? undefined : "Somente a administração distribui tarefas."} error={fieldErrors.assigned_to_id}>
           <Select name="assigned_to_id" defaultValue={task?.assigned_to_id ?? userId} disabled={!isAdmin}>
             {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
             {!users.some((u) => u.id === (task?.assigned_to_id ?? userId)) && <option value={task?.assigned_to_id ?? userId}>{task?.assigned_to_name ?? userName}</option>}
           </Select>
         </Field>
-        <Field label="Prazo"><Input name="due_date" type="date" defaultValue={task?.due_date ?? todayISO()} required /></Field>
-        <Field label="Prioridade"><Select name="priority" defaultValue={task?.priority ?? "media"}>{PRIORITIES.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}</Select></Field>
-        <Field label="Status"><Select name="status" defaultValue={task?.status ?? "pendente"}>{TASK_STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}</Select></Field>
-        <Field label="Vinculada a"><Select name="related_entity_type" defaultValue={task?.related_entity_type ?? "cliente"}>{ENTITY_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}</Select></Field>
-        <Field label="Nome do vínculo (opcional)" hint="Ex.: nome do cliente, para aparecer na ficha."><Input name="related_entity_label" defaultValue={task?.related_entity_label ?? ""} /></Field>
+        <Field label="Prazo" error={fieldErrors.due_date}><Input name="due_date" type="date" defaultValue={task?.due_date ?? todayISO()} required /></Field>
+        <Field label="Prioridade" error={fieldErrors.priority}><Select name="priority" defaultValue={task?.priority ?? "media"}>{PRIORITIES.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}</Select></Field>
+        <Field label="Status" error={fieldErrors.status}><Select name="status" defaultValue={task?.status ?? "pendente"}>{TASK_STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}</Select></Field>
+        <Field label="Vinculada a" error={fieldErrors.related_entity_type}><Select name="related_entity_type" defaultValue={task?.related_entity_type ?? "cliente"}>{ENTITY_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}</Select></Field>
+        <Field label="Nome do vínculo (opcional)" hint="Ex.: nome do cliente, para aparecer na ficha." error={fieldErrors.related_entity_label}><Input name="related_entity_label" defaultValue={task?.related_entity_label ?? ""} /></Field>
         <div className="sm:col-span-2"><FormError message={error} /></div>
       </form>
     </Modal>

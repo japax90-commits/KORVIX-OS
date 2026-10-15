@@ -11,6 +11,7 @@ import { CreatePaymentButton, ConfirmPaymentButton, PaymentEditButton } from "@/
 import { formatDate, formatMoney, isPastDay } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { PAYMENT_TYPES, PAYMENT_METHODS } from "@/lib/options";
+import { requireModule } from "@/lib/auth/server";
 
 const typeLabel = Object.fromEntries(PAYMENT_TYPES.map((t) => [t.value, t.label]));
 const methodLabel = Object.fromEntries(PAYMENT_METHODS.map((m) => [m.value, m.label]));
@@ -23,6 +24,7 @@ const filters = [
 ];
 
 export default async function PagamentosPage({ searchParams }: { searchParams?: { status?: string } }) {
+  await requireModule("financeiro");
   const s = await createClient();
   const { data: { user } } = await s.auth.getUser();
   if (!user) return null;

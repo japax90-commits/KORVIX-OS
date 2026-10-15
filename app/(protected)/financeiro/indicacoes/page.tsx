@@ -6,8 +6,10 @@ import { createClient } from "@/lib/supabase/server";
 import { isKorvixAdmin } from "@/lib/auth/permissions";
 import { CreateReferralButton, ReferralActions } from "@/components/operations/Referrals";
 import { formatDate, formatMoney } from "@/lib/format";
+import { requireModule } from "@/lib/auth/server";
 
 export default async function IndicacoesPage() {
+  await requireModule("financeiro");
   const s = await createClient();
   const { data: { user } } = await s.auth.getUser();
   if (!user) return null;

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { useAction } from "@/lib/hooks/useAction";
+import { onSubmitForm, useAction } from "@/lib/hooks/useAction";
 import { todayISO } from "@/lib/format";
 import { Modal } from "@/components/ui/Modal";
 import { Field, FormError, IconButton, Input, Select, buttonClass } from "@/components/ui/Form";
@@ -19,12 +19,15 @@ export type ClientRecord = {
 };
 
 function ClientModal({ open, onClose, client, currentUserId }: { open: boolean; onClose: () => void; client?: ClientRecord; currentUserId?: string }) {
-  const { run, busy, error, setError } = useAction();
+  const { run, busy, error, fieldErrors, fail } = useAction();
 
   async function submit(formData: FormData) {
     const company = String(formData.get("company_name") || "").trim();
     const contact = String(formData.get("contact_name") || "").trim();
-    if (!company || !contact) return setError("Informe empresa e contato.");
+    const errors: Record<string, string> = {};
+    if (!company) errors.company_name = "Informe a empresa.";
+    if (!contact) errors.contact_name = "Informe o contato.";
+    if (Object.keys(errors).length) return fail(errors);
     const payload = {
       company_name: company,
       contact_name: contact,
@@ -56,12 +59,12 @@ function ClientModal({ open, onClose, client, currentUserId }: { open: boolean; 
         </>
       }
     >
-      <form id="client-form" action={submit} className="grid gap-4 sm:grid-cols-2">
-        <Field label="Empresa" className="sm:col-span-2"><Input name="company_name" defaultValue={client?.company_name} required autoFocus /></Field>
-        <Field label="Contato"><Input name="contact_name" defaultValue={client?.contact_name} required /></Field>
-        <Field label="Telefone"><Input name="phone" type="tel" defaultValue={client?.phone ?? ""} placeholder="(00) 00000-0000" /></Field>
-        <Field label="Nicho"><Input name="niche" defaultValue={client?.niche ?? ""} /></Field>
-        <Field label="Status operacional">
+      <form id="client-form" onSubmit={onSubmitForm(submit)} className="grid gap-4 sm:grid-cols-2">
+        <Field label="Empresa" className="sm:col-span-2" error={fieldErrors.company_name}><Input name="company_name" defaultValue={client?.company_name} required autoFocus /></Field>
+        <Field label="Contato" error={fieldErrors.contact_name}><Input name="contact_name" defaultValue={client?.contact_name} required /></Field>
+        <Field label="Telefone" error={fieldErrors.phone}><Input name="phone" type="tel" defaultValue={client?.phone ?? ""} placeholder="(00) 00000-0000" /></Field>
+        <Field label="Nicho" error={fieldErrors.niche}><Input name="niche" defaultValue={client?.niche ?? ""} /></Field>
+        <Field label="Status operacional" error={fieldErrors.operational_status}>
           <Select name="operational_status" defaultValue={client?.operational_status ?? "onboarding"}>
             {CLIENT_STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
           </Select>

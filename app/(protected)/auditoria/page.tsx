@@ -4,10 +4,12 @@ import { PageHeader, ErrorState } from "@/components/ui/PageHeader";
 import { ShieldCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { formatDateTime } from "@/lib/format";
+import { requireModule } from "@/lib/auth/server";
 
 const actionTone: Record<string, "neutral" | "info" | "warning" | "danger" | "success"> = { PAYMENT_CONFIRMED: "success", OWNERSHIP_CHANGED: "warning", COMMISSION_RELEASED: "info", ACCESS_DENIED: "danger", APPROVE: "success" };
 
 export default async function AuditoriaPage() {
+  await requireModule("auditoria");
   const s = await createClient();
   const { data: { user } } = await s.auth.getUser();
   if (!user) return null;

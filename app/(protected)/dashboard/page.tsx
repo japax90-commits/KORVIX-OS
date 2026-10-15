@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 import { formatMoney, isPastDay } from "@/lib/format";
 import { MONTHLY_CONTRACT_GOAL, isClosedThisMonth } from "@/lib/business/goals";
 import { calculateAverageTicket, calculateCashBalance, calculateCommissions, calculateConversionRate, calculateForecastRevenue, calculateMRR, calculateNetProfit, calculateOperationalExpenses, calculateOverdue, calculateProLabore, calculateRevenue, calculateTaxes } from "@/lib/finance/calculations";
+import { requireModule } from "@/lib/auth/server";
 
 function Mini({ label, value, href }: { label: string; value: number; href?: string }) {
   const content = <><span className="text-sm text-ink-700">{label}</span><span className="text-lg font-semibold tabular-nums text-ink-900">{value}</span></>;
@@ -15,6 +16,7 @@ function Mini({ label, value, href }: { label: string; value: number; href?: str
 }
 
 export default async function DashboardPage() {
+  await requireModule("dashboard");
   const s = await createClient();
   const { data: { user } } = await s.auth.getUser();
   if (!user) return null;

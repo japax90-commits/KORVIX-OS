@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { useAction } from "@/lib/hooks/useAction";
+import { onSubmitForm, useAction } from "@/lib/hooks/useAction";
 import { formatDate, humanize, isPastDay, todayISO } from "@/lib/format";
 import { Modal } from "@/components/ui/Modal";
 import { Field, FormError, IconButton, Input, Select, buttonClass } from "@/components/ui/Form";
@@ -16,13 +16,16 @@ export type AvDemand = { id: string; client_name: string; demand_type: string; r
 type User = { id: string; name: string };
 
 function DemandModal({ open, onClose, demand, users, clients, userId, userName }: { open: boolean; onClose: () => void; demand?: AvDemand; users: User[]; clients: string[]; userId: string; userName: string }) {
-  const { run, busy, error, setError } = useAction();
+  const { run, busy, error, fieldErrors, fail } = useAction();
   async function submit(fd: FormData) {
     const client = String(fd.get("client_name") || "").trim();
     const type = String(fd.get("demand_type") || "").trim();
     const quantity = Number(fd.get("quantity") || 1);
-    if (!client || !type) return setError("Informe cliente e tipo de conteúdo.");
-    if (!Number.isInteger(quantity) || quantity < 1) return setError("A quantidade deve ser um número inteiro maior que zero.");
+    const errors: Record<string, string> = {};
+    if (!client) errors.client_name = "Informe o cliente.";
+    if (!type) errors.demand_type = "Informe o tipo de conteúdo.";
+    if (!Number.isInteger(quantity) || quantity < 1) errors.quantity = "Use um número inteiro maior que zero.";
+    if (Object.keys(errors).length) return fail(errors);
     const responsibleId = String(fd.get("responsible_user_id") || userId);
     const payload = {
       client_name: client,
@@ -44,21 +47,21 @@ function DemandModal({ open, onClose, demand, users, clients, userId, userName }
       description="Arquivos pesados ficam fora do KORVIX OS; registre aqui demanda, prazo e etapa."
       footer={<><button type="button" onClick={onClose} className={buttonClass("secondary")}>Cancelar</button><button type="submit" form={`av-${demand?.id ?? "new"}`} disabled={busy} className={buttonClass("primary")}>{busy ? "Salvando..." : demand ? "Salvar" : "Criar demanda"}</button></>}
     >
-      <form id={`av-${demand?.id ?? "new"}`} action={submit} className="grid gap-4 sm:grid-cols-2">
-        <Field label="Cliente" className="sm:col-span-2">
+      <form id={`av-${demand?.id ?? "new"}`} onSubmit={onSubmitForm(submit)} className="grid gap-4 sm:grid-cols-2">
+        <Field label="Cliente" className="sm:col-span-2" error={fieldErrors.client_name}>
           <Input name="client_name" list="av-clients" defaultValue={demand?.client_name} required autoFocus />
           <datalist id="av-clients">{clients.map((c) => <option key={c} value={c} />)}</datalist>
         </Field>
-        <Field label="Tipo de conteúdo" className="sm:col-span-2"><Input name="demand_type" defaultValue={demand?.demand_type ?? ""} placeholder="Ex.: Reels, fotos de produto, vídeo institucional" required /></Field>
-        <Field label="Quantidade"><Input name="quantity" type="number" min="1" step="1" defaultValue={demand?.quantity ?? 1} /></Field>
-        <Field label="Prazo"><Input name="deadline" type="date" defaultValue={demand?.deadline ?? todayISO()} required /></Field>
-        <Field label="Responsável">
+        <Field label="Tipo de conteúdo" className="sm:col-span-2" error={fieldErrors.demand_type}><Input name="demand_type" defaultValue={demand?.demand_type ?? ""} placeholder="Ex.: Reels, fotos de produto, vídeo institucional" required /></Field>
+        <Field label="Quantidade" error={fieldErrors.quantity}><Input name="quantity" type="number" min="1" step="1" defaultValue={demand?.quantity ?? 1} /></Field>
+        <Field label="Prazo" error={fieldErrors.deadline}><Input name="deadline" type="date" defaultValue={demand?.deadline ?? todayISO()} required /></Field>
+        <Field label="Responsável" error={fieldErrors.responsible_user_id}>
           <Select name="responsible_user_id" defaultValue={demand?.responsible_user_id ?? userId}>
             {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
             {!users.some((u) => u.id === userId) && <option value={userId}>{userName}</option>}
           </Select>
         </Field>
-        <Field label="Etapa"><Select name="status" defaultValue={demand?.status ?? "DEMAND"}>{AV_STAGES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}</Select></Field>
+        <Field label="Etapa" error={fieldErrors.status}><Select name="status" defaultValue={demand?.status ?? "DEMAND"}>{AV_STAGES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}</Select></Field>
         <div className="sm:col-span-2"><FormError message={error} /></div>
       </form>
     </Modal>

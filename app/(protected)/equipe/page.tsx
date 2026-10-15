@@ -6,10 +6,12 @@ import { createClient } from "@/lib/supabase/server";
 import { allowedModules, isKorvixAdmin, roleLabel } from "@/lib/auth/permissions";
 import { primaryNav, secondaryNav } from "@/lib/navigation";
 import { TeamMemberEdit } from "@/components/operations/TeamMember";
+import { requireModule } from "@/lib/auth/server";
 
 const moduleLabel = Object.fromEntries([...primaryNav, ...secondaryNav].map((n) => [n.module, n.label]));
 
 export default async function EquipePage() {
+  await requireModule("equipe");
   const s = await createClient();
   const { data: { user } } = await s.auth.getUser();
   if (!user) return null;

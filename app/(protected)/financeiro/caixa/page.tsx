@@ -8,10 +8,12 @@ import { CreateCashMovementButton, CashMovementActions } from "@/components/oper
 import { calculateCashBalance, calculateCashEntries, calculateCashExits } from "@/lib/finance/calculations";
 import { formatDate, formatMoney } from "@/lib/format";
 import { CASH_CATEGORIES } from "@/lib/options";
+import { requireModule } from "@/lib/auth/server";
 
 const categoryLabel = Object.fromEntries(CASH_CATEGORIES.map((c) => [c.value, c.label]));
 
 export default async function CaixaPage() {
+  await requireModule("financeiro");
   const s = await createClient();
   const { data: { user } } = await s.auth.getUser();
   if (!user) return null;

@@ -7,8 +7,10 @@ import { FinanceSubnav } from "../FinanceSubnav";
 import { createClient } from "@/lib/supabase/server";
 import { calculateCommissions } from "@/lib/finance/calculations";
 import { formatDate, formatMoney, humanize } from "@/lib/format";
+import { requireModule } from "@/lib/auth/server";
 
 export default async function ComissoesPage() {
+  await requireModule("financeiro");
   const s = await createClient();
   const { data: { user } } = await s.auth.getUser();
   if (!user) return null;

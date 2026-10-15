@@ -5,10 +5,12 @@ import { Link2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { AvBoard, CreateAvDemandButton, type AvDemand } from "@/components/operations/Audiovisual";
 import { isPastDay } from "@/lib/format";
+import { requireModule } from "@/lib/auth/server";
 
 const DONE = ["FINALIZED", "PUBLISHED", "CANCELLED"];
 
 export default async function AudiovisualPage() {
+  await requireModule("audiovisual");
   const s = await createClient();
   const { data: { user } } = await s.auth.getUser();
   if (!user) return null;

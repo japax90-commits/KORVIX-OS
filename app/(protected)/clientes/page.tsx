@@ -11,8 +11,10 @@ import { CreateClientButton, ClientEditButton } from "@/components/operations/Cl
 import { isKorvixAdmin } from "@/lib/auth/permissions";
 import { formatMoney } from "@/lib/format";
 import { CLIENT_STATUSES } from "@/lib/options";
+import { requireModule } from "@/lib/auth/server";
 
 export default async function ClientesPage({ searchParams }: { searchParams?: { q?: string; status?: string } }) {
+  await requireModule("clientes");
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;

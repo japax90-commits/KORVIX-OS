@@ -2,10 +2,12 @@ import { createClient } from "@/lib/supabase/server";
 import { AgendaView, CreateAgendaButton, type AgendaEvent } from "@/components/operations/Agenda";
 import { isKorvixAdmin } from "@/lib/auth/permissions";
 import { PageHeader, ErrorState } from "@/components/ui/PageHeader";
+import { requireModule } from "@/lib/auth/server";
 
 type User = { id: string; name: string };
 
 export default async function AgendaPage() {
+  await requireModule("agenda");
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;

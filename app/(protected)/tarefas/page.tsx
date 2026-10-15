@@ -11,6 +11,7 @@ import { formatDate, isPastDay, todayISO } from "@/lib/format";
 
 import { cn } from "@/lib/utils";
 import { PRIORITIES, ENTITY_TYPES } from "@/lib/options";
+import { requireModule } from "@/lib/auth/server";
 
 const entityLabel = Object.fromEntries(ENTITY_TYPES.map((t) => [t.value, t.label]));
 const priorityLabel = Object.fromEntries(PRIORITIES.map((p) => [p.value, p.label]));
@@ -24,6 +25,7 @@ const OPEN = ["pendente", "em_andamento"];
 type User = { id: string; name: string };
 
 export default async function TarefasPage({ searchParams }: { searchParams?: { filtro?: string } }) {
+  await requireModule("tarefas");
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;

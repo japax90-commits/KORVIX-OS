@@ -9,8 +9,10 @@ import { KORVIX_PLANS } from "@/lib/business/plans";
 import { isKorvixAdmin } from "@/lib/auth/permissions";
 import { formatMoney } from "@/lib/format";
 import { CreateGoalButton, GoalActions } from "@/components/operations/Goals";
+import { requireModule } from "@/lib/auth/server";
 
 export default async function ComercialPage() {
+  await requireModule("comercial");
   const s = await createClient();
   const { data: { user } } = await s.auth.getUser();
   if (!user) return null;

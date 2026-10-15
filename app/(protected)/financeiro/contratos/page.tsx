@@ -10,10 +10,12 @@ import { CreateContractButton, ContractRowActions } from "@/components/operation
 import { calculateMRR } from "@/lib/finance/calculations";
 import { formatDate, formatMoney } from "@/lib/format";
 import { FREQUENCIES } from "@/lib/options";
+import { requireModule } from "@/lib/auth/server";
 
 const frequencyLabel = Object.fromEntries(FREQUENCIES.map((f) => [f.value, f.label]));
 
 export default async function ContratosPage() {
+  await requireModule("financeiro");
   const s = await createClient();
   const { data: { user } } = await s.auth.getUser();
   if (!user) return null;

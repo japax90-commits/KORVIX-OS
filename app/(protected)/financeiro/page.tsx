@@ -24,8 +24,10 @@ import {
   calculateRevenue,
   calculateTaxes,
 } from "@/lib/finance/calculations";
+import { requireModule } from "@/lib/auth/server";
 
 export default async function FinanceiroPage() {
+  await requireModule("financeiro");
   const s = await createClient();
   const { data: { user } } = await s.auth.getUser();
   if (!user) return null;

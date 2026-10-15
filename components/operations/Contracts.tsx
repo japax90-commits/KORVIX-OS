@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { useAction } from "@/lib/hooks/useAction";
+import { onSubmitForm, useAction } from "@/lib/hooks/useAction";
 import { todayISO } from "@/lib/format";
 import { KORVIX_PLANS, type KorvixPlanName } from "@/lib/business/plans";
 import { Modal } from "@/components/ui/Modal";
@@ -16,16 +16,16 @@ type Client = { id: string; company_name: string };
 const plans = Object.values(KORVIX_PLANS);
 
 function ContractModal({ open, onClose, clients, contract }: { open: boolean; onClose: () => void; clients: Client[]; contract?: ContractRecord }) {
-  const { run, busy, error, setError } = useAction();
+  const { run, busy, error, fieldErrors, fail } = useAction();
   const [value, setValue] = useState(String(contract?.value ?? KORVIX_PLANS.Essencial.price));
 
   async function save(fd: FormData) {
     const clientName = String(fd.get("client_name") || "");
     const amount = Number(value);
     const startDate = String(fd.get("start_date") || "");
-    if (!clientName) return setError("Selecione o cliente.");
-    if (!Number.isFinite(amount) || amount <= 0) return setError("Informe um valor maior que zero.");
-    if (!startDate) return setError("Informe a data de início.");
+    if (!clientName) return fail({ client_name: "Selecione o cliente." });
+    if (!Number.isFinite(amount) || amount <= 0) return fail({ value: "Informe um valor maior que zero." });
+    if (!startDate) return fail({ start_date: "Informe a data de início." });
     const data = {
       client_name: clientName,
       plan_name: String(fd.get("plan_name")),
@@ -50,24 +50,24 @@ function ContractModal({ open, onClose, clients, contract }: { open: boolean; on
       description="O contrato ativo atualiza automaticamente o plano e o valor exibidos na ficha do cliente."
       footer={<><button type="button" onClick={onClose} className={buttonClass("secondary")}>Cancelar</button><button type="submit" form={`contract-${contract?.id ?? "new"}`} disabled={busy} className={buttonClass("primary")}>{busy ? "Salvando..." : "Salvar"}</button></>}
     >
-      <form id={`contract-${contract?.id ?? "new"}`} action={save} className="grid gap-4 sm:grid-cols-2">
-        <Field label="Cliente" className="sm:col-span-2">
+      <form id={`contract-${contract?.id ?? "new"}`} onSubmit={onSubmitForm(save)} className="grid gap-4 sm:grid-cols-2">
+        <Field label="Cliente" className="sm:col-span-2" error={fieldErrors.client_name}>
           <Select name="client_name" defaultValue={contract?.client_name || ""} required>
             <option value="" disabled>Selecione o cliente</option>
             {clientOptions.map((c) => <option key={c.id} value={c.company_name}>{c.company_name}</option>)}
           </Select>
         </Field>
-        <Field label="Plano">
+        <Field label="Plano" error={fieldErrors.plan_name}>
           <Select name="plan_name" defaultValue={contract?.plan_name || "Essencial"} onChange={(e) => { const plan = KORVIX_PLANS[e.target.value as KorvixPlanName]; if (plan) setValue(String(plan.price)); }} required>
             {plans.map((plan) => <option key={plan.name} value={plan.name}>{plan.name} — R$ {plan.price.toLocaleString("pt-BR")}/mês</option>)}
             {contract && !plans.some((p) => p.name === contract.plan_name) && <option value={contract.plan_name}>{contract.plan_name}</option>}
           </Select>
         </Field>
-        <Field label="Valor (R$)" hint="Pode ser ajustado para contrato personalizado."><Input value={value} onChange={(e) => setValue(e.target.value)} type="number" step="0.01" min="0.01" required /></Field>
-        <Field label="Frequência"><Select name="frequency" defaultValue={contract?.frequency || "mensal"}>{FREQUENCIES.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}</Select></Field>
-        <Field label="Status"><Select name="status" defaultValue={contract?.status || "ativo"}>{CONTRACT_STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}</Select></Field>
-        <Field label="Início"><Input name="start_date" type="date" defaultValue={contract?.start_date || todayISO()} required /></Field>
-        <Field label="Próxima cobrança"><Input name="next_billing_date" type="date" defaultValue={contract?.next_billing_date || todayISO()} /></Field>
+        <Field label="Valor (R$)" hint="Pode ser ajustado para contrato personalizado." error={fieldErrors.value}><Input value={value} onChange={(e) => setValue(e.target.value)} type="number" step="0.01" min="0.01" required /></Field>
+        <Field label="Frequência" error={fieldErrors.frequency}><Select name="frequency" defaultValue={contract?.frequency || "mensal"}>{FREQUENCIES.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}</Select></Field>
+        <Field label="Status" error={fieldErrors.status}><Select name="status" defaultValue={contract?.status || "ativo"}>{CONTRACT_STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}</Select></Field>
+        <Field label="Início" error={fieldErrors.start_date}><Input name="start_date" type="date" defaultValue={contract?.start_date || todayISO()} required /></Field>
+        <Field label="Próxima cobrança" error={fieldErrors.next_billing_date}><Input name="next_billing_date" type="date" defaultValue={contract?.next_billing_date || todayISO()} /></Field>
         <div className="sm:col-span-2"><FormError message={error} /></div>
       </form>
     </Modal>

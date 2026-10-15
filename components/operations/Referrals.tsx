@@ -3,22 +3,25 @@
 import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { useAction } from "@/lib/hooks/useAction";
+import { onSubmitForm, useAction } from "@/lib/hooks/useAction";
 import { Modal } from "@/components/ui/Modal";
 import { Field, FormError, IconButton, Input, Select, buttonClass } from "@/components/ui/Form";
 import { REFERRAL_STATUSES } from "@/lib/options";
 
 export function CreateReferralButton({ userName }: { userName: string }) {
   const [open, setOpen] = useState(false);
-  const { run, busy, error, setError } = useAction();
+  const { run, busy, error, fieldErrors, fail } = useAction();
   async function submit(fd: FormData) {
     const client = String(fd.get("client_name") || "").trim();
     const referrer = String(fd.get("referrer_name") || "").trim();
     const type = String(fd.get("commission_type") || "fixo");
     const value = Number(fd.get("commission_value") || 0);
-    if (!client || !referrer) return setError("Informe cliente e indicador.");
-    if (!Number.isFinite(value) || value <= 0) return setError("Informe um valor maior que zero.");
-    if (type === "percentual" && value > 100) return setError("O percentual não pode passar de 100%.");
+    const errors: Record<string, string> = {};
+    if (!client) errors.client_name = "Informe o cliente indicado.";
+    if (!referrer) errors.referrer_name = "Informe o indicador.";
+    if (!Number.isFinite(value) || value <= 0) errors.commission_value = "Informe um valor maior que zero.";
+    else if (type === "percentual" && value > 100) errors.commission_value = "O percentual não pode passar de 100%.";
+    if (Object.keys(errors).length) return fail(errors);
     await run(
       async () => createClient().from("referral_commissions").insert({ client_name: client, referrer_name: referrer, commission_type: type, commission_value: value, status: "pendente", negotiated_by: userName }),
       { onSuccess: () => setOpen(false) },
@@ -35,12 +38,12 @@ export function CreateReferralButton({ userName }: { userName: string }) {
         size="sm"
         footer={<><button type="button" onClick={() => setOpen(false)} className={buttonClass("secondary")}>Cancelar</button><button type="submit" form="referral-form" disabled={busy} className={buttonClass("primary")}>{busy ? "Salvando..." : "Salvar indicação"}</button></>}
       >
-        <form id="referral-form" action={submit} className="space-y-4">
-          <Field label="Cliente indicado"><Input name="client_name" required /></Field>
-          <Field label="Indicador"><Input name="referrer_name" required /></Field>
+        <form id="referral-form" onSubmit={onSubmitForm(submit)} className="space-y-4">
+          <Field label="Cliente indicado" error={fieldErrors.client_name}><Input name="client_name" required /></Field>
+          <Field label="Indicador" error={fieldErrors.referrer_name}><Input name="referrer_name" required /></Field>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Tipo"><Select name="commission_type" defaultValue="fixo"><option value="fixo">Valor fixo (R$)</option><option value="percentual">Percentual (%)</option></Select></Field>
-            <Field label="Valor"><Input name="commission_value" type="number" min="0.01" step="0.01" required /></Field>
+            <Field label="Tipo" error={fieldErrors.commission_type}><Select name="commission_type" defaultValue="fixo"><option value="fixo">Valor fixo (R$)</option><option value="percentual">Percentual (%)</option></Select></Field>
+            <Field label="Valor" error={fieldErrors.commission_value}><Input name="commission_value" type="number" min="0.01" step="0.01" required /></Field>
           </div>
           <FormError message={error} />
         </form>

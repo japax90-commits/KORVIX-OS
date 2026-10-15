@@ -3,11 +3,13 @@ import { CrmClientV2 } from "./CrmClientV2";
 import { NewOpportunityButton } from "./CrmClient";
 import { isKorvixAdmin } from "@/lib/auth/permissions";
 import { PageHeader, ErrorState } from "@/components/ui/PageHeader";
+import { requireModule } from "@/lib/auth/server";
 
 type OpportunityRow = { id: string; client_name: string; origin_owner_id: string | null; closing_user_id: string | null; channel: string | null; stage: string; priority: string | null; estimated_value: number | null; probability: number | null; next_action: string | null; next_followup_at: string | null; loss_reason: string | null };
 type UserRow = { id: string; name: string };
 
 export default async function CrmPage() {
+  await requireModule("crm");
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
