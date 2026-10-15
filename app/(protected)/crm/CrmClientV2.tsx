@@ -1,7 +1,8 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Archive, CalendarClock, Search, Trash2, UserPlus } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { friendlyError } from "@/lib/hooks/useAction";
@@ -10,13 +11,13 @@ import { Modal } from "@/components/ui/Modal";
 import { Field, FormError, IconButton, Input, Select, Textarea, buttonClass, inputClass } from "@/components/ui/Form";
 
 import { cn } from "@/lib/utils";
+import { STAGES, STAGE_LABELS, STAGE_PROBABILITY, normalizeStage, type Stage } from "@/lib/crm";
 import { CHANNELS, PRIORITIES } from "@/lib/options";
 import { useConfirm, useToast } from "@/components/ui/Feedback";
 
-const stages = ["lead", "qualificacao", "proposta", "negociacao", "ganho", "perdido"] as const;
-type Stage = (typeof stages)[number];
-const labels: Record<Stage, string> = { lead: "Lead", qualificacao: "Qualificação", proposta: "Proposta", negociacao: "Negociação", ganho: "Ganho", perdido: "Perdido" };
-const probabilities: Record<Stage, number> = { lead: 10, qualificacao: 25, proposta: 50, negociacao: 70, ganho: 100, perdido: 0 };
+const stages = STAGES;
+const labels = STAGE_LABELS;
+const probabilities = STAGE_PROBABILITY;
 const stageAccent: Record<Stage, string> = { lead: "bg-ink-400", qualificacao: "bg-korvix-400", proposta: "bg-warning", negociacao: "bg-warning", ganho: "bg-success", perdido: "bg-danger" };
 const priorityLabel = Object.fromEntries(PRIORITIES.map((p) => [p.value, p.label]));
 const channelLabel = Object.fromEntries(CHANNELS.map((c) => [c.value, c.label]));
@@ -37,16 +38,11 @@ type Row = {
 };
 type User = { id: string; name: string };
 
-function normalizeStage(v: string): Stage {
-  if (v === "fechado_ganho") return "ganho";
-  if (v === "fechado_perdido") return "perdido";
-  return (stages as readonly string[]).includes(v) ? (v as Stage) : "lead";
-}
 
 type ClientRef = { id: string; company_name: string };
 const normalizeName = (name: string) => name.trim().toLowerCase();
 
-export function CrmClientV2({ opportunities, users, currentUserId, isAdmin = false, clients = [] }: { opportunities: Row[]; users: User[]; currentUserId: string; isAdmin?: boolean; clients?: ClientRef[] }) {
+export function CrmClientV2({ opportunities, users, currentUserId, isAdmin = false, clients = [], openLeadId }: { opportunities: Row[]; users: User[]; currentUserId: string; isAdmin?: boolean; clients?: ClientRef[]; openLeadId?: string }) {
   const confirmDialog = useConfirm();
   const toast = useToast();
   const [clientList, setClientList] = useState(clients);
@@ -91,6 +87,32 @@ export function CrmClientV2({ opportunities, users, currentUserId, isAdmin = fal
 
   // Novos registros criados pelo botão "Nova oportunidade" chegam via router.refresh().
   useEffect(() => setItems(opportunities), [opportunities]);
+
+  // Abre direto a oportunidade indicada na URL (?lead=id), ex.: vindo dos follow-ups.
+  const openedFromUrl = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (!openLeadId || openedFromUrl.current === openLeadId) return;
+    const target = opportunities.find((o) => o.id === openLeadId);
+    if (target) {
+      openedFromUrl.current = openLeadId;
+      setFormError("");
+      setFieldErrors({});
+      setLossStage(normalizeStage(target.stage));
+      setSelected(target);
+    }
+  }, [openLeadId, opportunities]);
+
+  // Ao fechar, remove ?lead da URL para que o mesmo link possa reabrir o registro.
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    if (selected || !openLeadId || openedFromUrl.current !== openLeadId) return;
+    openedFromUrl.current = undefined;
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("lead");
+    router.replace(params.size ? `${pathname}?${params}` : pathname, { scroll: false });
+  }, [selected, openLeadId, pathname, router, searchParams]);
 
   const userName = (id: string | null) => users.find((u) => u.id === id)?.name ?? "—";
   const filtered = useMemo(() => {

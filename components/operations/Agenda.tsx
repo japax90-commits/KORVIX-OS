@@ -88,11 +88,11 @@ function EventModal({ open, onClose, event, userId, userName, users, isAdmin }: 
   );
 }
 
-export function CreateAgendaButton(props: { userId: string; userName: string; users: User[]; isAdmin: boolean }) {
+export function CreateAgendaButton({ compact = false, ...props }: { userId: string; userName: string; users: User[]; isAdmin: boolean; compact?: boolean }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button onClick={() => setOpen(true)} className={buttonClass("primary")}><Plus size={16} /> Novo evento</button>
+      <button onClick={() => setOpen(true)} className={compact ? buttonClass("secondary", "px-3 py-1.5 text-xs") : buttonClass("primary")}><Plus size={compact ? 14 : 16} /> Novo evento</button>
       {open && <EventModal open onClose={() => setOpen(false)} {...props} />}
     </>
   );

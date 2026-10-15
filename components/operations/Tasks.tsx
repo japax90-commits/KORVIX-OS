@@ -61,11 +61,11 @@ function TaskModal({ open, onClose, task, userId, userName, users, isAdmin }: { 
 
 type Shared = { userId: string; userName: string; users: User[]; isAdmin: boolean };
 
-export function CreateTaskButton(props: Shared) {
+export function CreateTaskButton({ compact = false, ...props }: Shared & { compact?: boolean }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button onClick={() => setOpen(true)} className={buttonClass("primary")}><Plus size={16} /> Nova tarefa</button>
+      <button onClick={() => setOpen(true)} className={compact ? buttonClass("secondary", "px-3 py-1.5 text-xs") : buttonClass("primary")}><Plus size={compact ? 14 : 16} /> Nova tarefa</button>
       {open && <TaskModal open onClose={() => setOpen(false)} {...props} />}
     </>
   );
