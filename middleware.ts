@@ -1,11 +1,16 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { supabasePublishableKey, supabaseUrl } from "@/lib/supabase/config";
+import { isKorvixAdmin } from "@/lib/auth/permissions";
 
 const adminOnly = ["/dashboard", "/financeiro", "/audiovisual", "/equipe", "/auditoria"];
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
+  const pathname = request.nextUrl.pathname;
+  const restricted = adminOnly.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`),
+  );
   const supabase = createServerClient(supabaseUrl, supabasePublishableKey, {
     cookies: {
       getAll: () => request.cookies.getAll(),
@@ -18,16 +23,35 @@ export async function middleware(request: NextRequest) {
   });
 
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { data: profile } = await supabase.from("users").select("id,email,role,active").eq("id", user.id).maybeSingle();
-      const isAdmin = Boolean(profile?.active && (profile.role === "ceo" || profile.role === "cofundador" || profile.email?.toLowerCase() === "korvixdigital@gmail.com"));
-      const pathname = request.nextUrl.pathname;
-      const restricted = adminOnly.some((route) => pathname === route || pathname.startsWith(`${route}/`));
-      if (restricted && !isAdmin) return NextResponse.redirect(new URL("/crm?error=Sem%20permissao", request.url));
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    // Restricted routes must fail closed if identity cannot be verified.
+    if (restricted && (authError || !user)) {
+      const loginUrl = new URL("/login?error=Acesso%20restrito", request.url);
+      return NextResponse.redirect(loginUrl);
+    }
+
+    if (user && restricted) {
+      const { data: profile, error: profileError } = await supabase
+        .from("users")
+        .select("id,email,role,active")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      // Do not grant access when the profile lookup fails or the user is inactive.
+      if (profileError || !profile?.active) {
+        return NextResponse.redirect(new URL("/login?error=Acesso%20não%20autorizado", request.url));
+      }
+
+      if (!isKorvixAdmin(profile)) {
+        return NextResponse.redirect(new URL("/crm?error=Sem%20permissao", request.url));
+      }
     }
   } catch {
-    // Keep authentication resilient if the auth/profile service is temporarily unavailable.
+    // Fail closed for restricted routes if Supabase cannot verify the user/profile.
+    if (restricted) {
+      return NextResponse.redirect(new URL("/login?error=Falha%20ao%20validar%20acesso", request.url));
+    }
   }
 
   return response;
