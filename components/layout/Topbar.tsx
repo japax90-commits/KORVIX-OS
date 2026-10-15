@@ -9,6 +9,7 @@ import { formatDateTime } from "@/lib/format";
 import { signOut } from "@/app/actions/auth";
 import { MobileSidebar } from "./Sidebar";
 import { CommandPalette } from "./CommandPalette";
+import { ThemeToggle } from "./ThemeToggle";
 
 export type TopbarUser = { name: string; email: string; roleLabel: string; initials: string };
 export type TopbarNotification = { id: string; title: string; body: string; read_at: string | null; created_at: string };
@@ -81,7 +82,7 @@ export function Topbar({
       <MobileSidebar open={mobileOpen} onClose={() => setMobileOpen(false)} allowedModules={allowedModules} isAdmin={isAdmin} />
       <CommandPalette open={searchOpen} onClose={() => setSearchOpen(false)} allowedModules={allowedModules} />
 
-      <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-ink-200 bg-white/90 px-4 py-3 backdrop-blur sm:px-6">
+      <header className="sticky top-0 z-30 flex h-[61px] items-center gap-3 border-b border-ink-200 bg-surface/85 px-4 backdrop-blur-md sm:px-6 lg:px-8">
         <button onClick={() => setMobileOpen(true)} className="focus-ring -ml-1 rounded-lg p-1.5 text-ink-700 hover:bg-ink-100 lg:hidden" aria-label="Abrir menu">
           <Menu size={20} />
         </button>
@@ -98,13 +99,15 @@ export function Topbar({
             <Search size={18} />
           </button>
 
+          <ThemeToggle />
+
           <div className="relative" ref={notifRef}>
             <button onClick={() => setNotifOpen((v) => !v)} className="focus-ring relative rounded-lg p-2 text-ink-700 hover:bg-ink-100" aria-label={`Notificações (${unread} não lidas)`} aria-expanded={notifOpen}>
               <Bell size={18} />
               {unread > 0 && <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[9px] font-semibold text-white">{unread > 9 ? "9+" : unread}</span>}
             </button>
             {notifOpen && (
-              <div className="fixed inset-x-3 top-16 z-40 rounded-xl border border-ink-200 bg-white shadow-panel sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[340px]">
+              <div className="fixed inset-x-3 top-16 z-40 rounded-xl border border-ink-200 bg-surface shadow-panel sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[340px]">
                 <div className="flex items-center justify-between border-b border-ink-100 px-4 py-3">
                   <p className="text-sm font-semibold text-ink-900">Notificações</p>
                   {unread > 0 ? (
@@ -142,13 +145,13 @@ export function Topbar({
               <ChevronDown size={14} className="hidden text-ink-500 sm:block" />
             </button>
             {userOpen && (
-              <div className="absolute right-0 top-full z-40 mt-2 w-60 rounded-xl border border-ink-200 bg-white p-1.5 shadow-panel">
+              <div className="absolute right-0 top-full z-40 mt-2 w-60 rounded-xl border border-ink-200 bg-surface p-1.5 shadow-panel">
                 <div className="px-3 py-2.5">
                   <p className="truncate text-sm font-medium text-ink-900">{user.name}</p>
                   <p className="truncate text-xs text-ink-500">{user.email}</p>
                 </div>
                 <form action={signOut}>
-                  <button type="submit" className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-ink-700 hover:bg-red-50 hover:text-danger">
+                  <button type="submit" className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-ink-700 hover:bg-danger/10 hover:text-danger">
                     <LogOut size={15} /> Sair
                   </button>
                 </form>

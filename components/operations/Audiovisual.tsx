@@ -9,6 +9,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Field, FormError, IconButton, Input, Select, buttonClass } from "@/components/ui/Form";
 import { cn } from "@/lib/utils";
 import { AV_STAGES } from "@/lib/options";
+import { useConfirm } from "@/components/ui/Feedback";
 
 const DONE = ["FINALIZED", "PUBLISHED", "CANCELLED"];
 
@@ -37,7 +38,7 @@ function DemandModal({ open, onClose, demand, users, clients, userId, userName }
       responsible_name: users.find((u) => u.id === responsibleId)?.name ?? userName,
     };
     const supabase = createClient();
-    await run(async () => (demand ? supabase.from("av_demands").update(payload).eq("id", demand.id) : supabase.from("av_demands").insert({ ...payload, created_by: userId })), { onSuccess: onClose });
+    await run(async () => (demand ? supabase.from("av_demands").update(payload).eq("id", demand.id) : supabase.from("av_demands").insert({ ...payload, created_by: userId })), { onSuccess: onClose, success: demand ? "Demanda atualizada." : "Demanda criada." });
   }
   return (
     <Modal
@@ -81,6 +82,7 @@ export function CreateAvDemandButton(props: Shared) {
 }
 
 export function AvBoard({ demands, ...shared }: Shared & { demands: AvDemand[] }) {
+  const confirmDialog = useConfirm();
   const [items, setItems] = useState(demands);
   const [editing, setEditing] = useState<AvDemand | null>(null);
   const { run, error } = useAction();
@@ -91,8 +93,8 @@ export function AvBoard({ demands, ...shared }: Shared & { demands: AvDemand[] }
     await run(async () => createClient().from("av_demands").update({ status }).eq("id", d.id));
   }
   async function remove(d: AvDemand) {
-    if (!window.confirm(`Excluir a demanda de ${d.client_name}?`)) return;
-    await run(async () => createClient().from("av_demands").delete().eq("id", d.id));
+    if (!(await confirmDialog({ description: `Excluir a demanda de ${d.client_name}?` }))) return;
+    await run(async () => createClient().from("av_demands").delete().eq("id", d.id), { success: "Demanda excluída." });
   }
 
   return (
@@ -106,13 +108,13 @@ export function AvBoard({ demands, ...shared }: Shared & { demands: AvDemand[] }
               <section key={stage.value} className="w-[220px] shrink-0 rounded-xl border border-ink-200 bg-ink-50 p-2.5">
                 <div className="mb-2 flex items-center justify-between px-1">
                   <h3 className="text-[12.5px] font-semibold text-ink-900">{stage.label}</h3>
-                  <span className="rounded-full bg-white px-2 py-0.5 text-xs text-ink-600 ring-1 ring-ink-200">{list.length}</span>
+                  <span className="rounded-full bg-surface px-2 py-0.5 text-xs text-ink-600 ring-1 ring-ink-200">{list.length}</span>
                 </div>
                 <div className="space-y-2">
                   {list.map((d) => {
                     const late = !DONE.includes(d.status) && isPastDay(d.deadline);
                     return (
-                      <article key={d.id} className="rounded-lg border border-ink-200 bg-white p-3 shadow-sm">
+                      <article key={d.id} className="rounded-lg border border-ink-200 bg-surface p-3 shadow-sm">
                         <div className="flex items-start justify-between gap-1">
                           <button type="button" onClick={() => setEditing(d)} className="min-w-0 text-left">
                             <p className="truncate text-[13px] font-medium text-ink-900">{d.client_name}</p>
@@ -127,7 +129,7 @@ export function AvBoard({ demands, ...shared }: Shared & { demands: AvDemand[] }
                           <span className="truncate text-ink-500">{d.responsible_name}</span>
                           <span className={cn("shrink-0", late ? "font-medium text-danger" : "text-ink-500")}>{formatDate(d.deadline)}</span>
                         </div>
-                        <select aria-label={`Mover demanda de ${d.client_name}`} value={d.status} onChange={(e) => move(d, e.target.value)} className="focus-ring mt-2 w-full rounded-md border border-ink-200 bg-white px-1.5 py-1 text-xs text-ink-700">
+                        <select aria-label={`Mover demanda de ${d.client_name}`} value={d.status} onChange={(e) => move(d, e.target.value)} className="focus-ring mt-2 w-full rounded-md border border-ink-200 bg-surface px-1.5 py-1 text-xs text-ink-700">
                           {AV_STAGES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
                         </select>
                       </article>

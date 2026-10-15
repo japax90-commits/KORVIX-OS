@@ -68,7 +68,7 @@ export function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-ink-900/50 p-0 backdrop-blur-[2px] sm:items-center sm:p-4"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 p-0 backdrop-blur-[2px] sm:items-center sm:p-4"
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
     >
       <div
@@ -78,7 +78,7 @@ export function Modal({
         aria-modal="true"
         aria-labelledby={titleId}
         className={cn(
-          "flex max-h-[92dvh] w-full flex-col rounded-t-2xl bg-white shadow-2xl outline-none sm:max-h-[88dvh] sm:rounded-2xl",
+          "flex max-h-[92dvh] w-full flex-col rounded-t-2xl bg-surface shadow-2xl outline-none sm:max-h-[88dvh] sm:rounded-2xl",
           sizes[size],
         )}
       >

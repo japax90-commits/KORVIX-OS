@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { onSubmitForm, useAction } from "@/lib/hooks/useAction";
 import { Modal } from "@/components/ui/Modal";
 import { Field, FormError, IconButton, Input, Select, buttonClass } from "@/components/ui/Form";
+import { useConfirm } from "@/components/ui/Feedback";
 
 export type GoalRecord = { id: string; vendor_id: string | null; vendor_name: string; metric: string; period: string; target: number; achieved: number };
 type User = { id: string; name: string };
@@ -27,7 +28,7 @@ function GoalModal({ open, onClose, goal, users }: { open: boolean; onClose: () 
     if (Object.keys(errors).length) return fail(errors);
     const payload = { vendor_id: vendorId, vendor_name: users.find((u) => u.id === vendorId)?.name ?? goal?.vendor_name ?? "", metric, period, target, achieved };
     const supabase = createClient();
-    await run(async () => (goal ? supabase.from("goals").update(payload).eq("id", goal.id) : supabase.from("goals").insert(payload)), { onSuccess: onClose });
+    await run(async () => (goal ? supabase.from("goals").update(payload).eq("id", goal.id) : supabase.from("goals").insert(payload)), { onSuccess: onClose, success: goal ? "Meta atualizada." : "Meta criada." });
   }
   return (
     <Modal
@@ -67,12 +68,13 @@ export function CreateGoalButton({ users }: { users: User[] }) {
 }
 
 export function GoalActions({ goal, users }: { goal: GoalRecord; users: User[] }) {
+  const confirmDialog = useConfirm();
   const [open, setOpen] = useState(false);
   const { run, busy, error } = useAction();
   return (
     <span className="inline-flex items-center gap-1">
       <IconButton label="Editar meta" onClick={() => setOpen(true)}><Pencil size={14} /></IconButton>
-      <IconButton label="Excluir meta" tone="danger" disabled={busy} onClick={() => window.confirm("Excluir esta meta?") && run(async () => createClient().from("goals").delete().eq("id", goal.id))}><Trash2 size={14} /></IconButton>
+      <IconButton label="Excluir meta" tone="danger" disabled={busy} onClick={async () => (await confirmDialog({ description: "Excluir esta meta?" })) && run(async () => createClient().from("goals").delete().eq("id", goal.id), { success: "Meta excluída." })}><Trash2 size={14} /></IconButton>
       {error && <span role="alert" className="text-xs text-danger">{error}</span>}
       {open && <GoalModal open onClose={() => setOpen(false)} goal={goal} users={users} />}
     </span>

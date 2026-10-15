@@ -11,6 +11,7 @@ import { Field, FormError, IconButton, Input, Select, Textarea, buttonClass, inp
 
 import { cn } from "@/lib/utils";
 import { CHANNELS, PRIORITIES } from "@/lib/options";
+import { useConfirm, useToast } from "@/components/ui/Feedback";
 
 const stages = ["lead", "qualificacao", "proposta", "negociacao", "ganho", "perdido"] as const;
 type Stage = (typeof stages)[number];
@@ -46,6 +47,8 @@ type ClientRef = { id: string; company_name: string };
 const normalizeName = (name: string) => name.trim().toLowerCase();
 
 export function CrmClientV2({ opportunities, users, currentUserId, isAdmin = false, clients = [] }: { opportunities: Row[]; users: User[]; currentUserId: string; isAdmin?: boolean; clients?: ClientRef[] }) {
+  const confirmDialog = useConfirm();
+  const toast = useToast();
   const [clientList, setClientList] = useState(clients);
   const [converting, setConverting] = useState<string | null>(null);
   useEffect(() => setClientList(clients), [clients]);
@@ -71,7 +74,10 @@ export function CrmClientV2({ opportunities, users, currentUserId, isAdmin = fal
       .single();
     setConverting(null);
     if (e) return setError(friendlyError(e.message));
-    if (data) setClientList((list) => [...list, data as ClientRef]);
+    if (data) {
+      setClientList((list) => [...list, data as ClientRef]);
+      toast(`${item.client_name} agora é cliente.`);
+    }
   }
   const [items, setItems] = useState(opportunities);
   const [selected, setSelected] = useState<Row | null>(null);
@@ -114,23 +120,28 @@ export function CrmClientV2({ opportunities, users, currentUserId, isAdmin = fal
       .select("*")
       .single();
     if (e) return setError(friendlyError(e.message));
-    if (data) setItems((c) => c.map((i) => (i.id === item.id ? (data as Row) : i)));
+    if (data) {
+      setItems((c) => c.map((i) => (i.id === item.id ? (data as Row) : i)));
+      toast(`${item.client_name} movido para ${labels[stage]}.`);
+    }
   }
 
   async function archive(item: Row) {
-    if (!window.confirm(`Arquivar o lead "${item.client_name}"? Ele sai do funil, mas o registro é preservado.`)) return;
+    if (!(await confirmDialog({ description: `Arquivar o lead "${item.client_name}"? Ele sai do funil, mas o registro é preservado.`, title: "Arquivar lead", confirmLabel: "Arquivar", tone: "default" }))) return;
     setError("");
     const { error: e } = await createClient().from("opportunities").update({ archived_at: new Date().toISOString(), archived_by: currentUserId }).eq("id", item.id);
     if (e) return setError(friendlyError(e.message));
     setItems((c) => c.filter((i) => i.id !== item.id));
+    toast("Lead arquivado.");
   }
 
   async function remove(item: Row) {
-    if (!window.confirm(`Excluir definitivamente o lead "${item.client_name}"? Esta ação não pode ser desfeita.`)) return;
+    if (!(await confirmDialog({ description: `Excluir definitivamente o lead "${item.client_name}"? Esta ação não pode ser desfeita.` }))) return;
     setError("");
     const { error: e } = await createClient().from("opportunities").delete().eq("id", item.id);
     if (e) return setError(friendlyError(e.message));
     setItems((c) => c.filter((i) => i.id !== item.id));
+    toast("Lead excluído.");
   }
 
   async function save(e: FormEvent<HTMLFormElement>) {
@@ -171,6 +182,7 @@ export function CrmClientV2({ opportunities, users, currentUserId, isAdmin = fal
     if (data) {
       setItems((c) => c.map((i) => (i.id === data.id ? (data as Row) : i)));
       setSelected(null);
+      toast("Oportunidade atualizada.");
     }
   }
 
@@ -204,14 +216,14 @@ export function CrmClientV2({ opportunities, users, currentUserId, isAdmin = fal
                     <span className={cn("h-2 w-2 rounded-full", stageAccent[stage])} />
                     <h3 className="text-sm font-semibold text-ink-900">{labels[stage]}</h3>
                   </div>
-                  <span className="rounded-full bg-white px-2 py-0.5 text-xs font-medium text-ink-600 ring-1 ring-ink-200">{list.length}</span>
+                  <span className="rounded-full bg-surface px-2 py-0.5 text-xs font-medium text-ink-600 ring-1 ring-ink-200">{list.length}</span>
                 </div>
                 <p className="-mt-2 mb-3 text-xs text-ink-500">{formatMoney(total)}</p>
                 <div className="space-y-2.5">
                   {list.map((item) => {
                     const overdue = item.next_followup_at && new Date(item.next_followup_at).getTime() < now && !["ganho", "perdido"].includes(normalizeStage(item.stage));
                     return (
-                      <article key={item.id} className="rounded-lg border border-ink-200 bg-white p-3 shadow-sm">
+                      <article key={item.id} className="rounded-lg border border-ink-200 bg-surface p-3 shadow-sm">
                         <button type="button" className="w-full text-left" onClick={() => open(item)}>
                           <p className="truncate text-sm font-medium text-ink-900">{item.client_name}</p>
                           <p className="text-sm text-ink-700">{formatMoney(item.estimated_value || 0)}</p>
@@ -233,7 +245,7 @@ export function CrmClientV2({ opportunities, users, currentUserId, isAdmin = fal
                           )
                         )}
                         <div className="mt-2 flex items-center gap-1 border-t border-ink-100 pt-2">
-                          <select aria-label={`Mover ${item.client_name} de etapa`} className="focus-ring min-w-0 flex-1 rounded-md border border-ink-200 bg-white px-1.5 py-1 text-xs text-ink-700" value={normalizeStage(item.stage)} onChange={(e) => move(item, normalizeStage(e.target.value))}>
+                          <select aria-label={`Mover ${item.client_name} de etapa`} className="focus-ring min-w-0 flex-1 rounded-md border border-ink-200 bg-surface px-1.5 py-1 text-xs text-ink-700" value={normalizeStage(item.stage)} onChange={(e) => move(item, normalizeStage(e.target.value))}>
                             {stages.map((option) => <option key={option} value={option}>{labels[option]}</option>)}
                           </select>
                           <IconButton label="Arquivar" onClick={() => archive(item)}><Archive size={14} /></IconButton>

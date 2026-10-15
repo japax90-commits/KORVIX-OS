@@ -24,7 +24,7 @@ export function FlashMessage() {
 
   if (!flash) return null;
   return (
-    <div role={flash.tone === "error" ? "alert" : "status"} className={`mb-5 flex items-start justify-between gap-3 rounded-xl border px-4 py-3 text-sm ${flash.tone === "error" ? "border-amber-200 bg-amber-50 text-amber-900" : "border-green-200 bg-green-50 text-green-800"}`}>
+    <div role={flash.tone === "error" ? "alert" : "status"} className={`mb-5 flex items-start justify-between gap-3 rounded-xl border px-4 py-3 text-sm ${flash.tone === "error" ? "border-warning/30 bg-warning/10 text-warning" : "border-success/30 bg-success/10 text-success"}`}>
       <span>{flash.text}</span>
       <button type="button" onClick={() => setFlash(null)} aria-label="Fechar aviso" className="rounded p-0.5 opacity-70 hover:opacity-100"><X size={15} /></button>
     </div>

@@ -5,11 +5,11 @@ import { cn } from "@/lib/utils";
 // mesma altura de controle, borda, foco e tipografia.
 
 export const inputClass =
-  "focus-ring block w-full rounded-lg border border-ink-300 bg-white px-3 py-2.5 text-sm text-ink-900 placeholder:text-ink-400 aria-[invalid=true]:border-danger aria-[invalid=true]:ring-1 aria-[invalid=true]:ring-danger/30 disabled:cursor-not-allowed disabled:bg-ink-50 disabled:text-ink-500";
+  "focus-ring block w-full rounded-lg border border-ink-300 bg-surface px-3 py-2.5 text-sm text-ink-900 placeholder:text-ink-400 aria-[invalid=true]:border-danger aria-[invalid=true]:ring-1 aria-[invalid=true]:ring-danger/30 disabled:cursor-not-allowed disabled:bg-ink-50 disabled:text-ink-500";
 
 const buttonVariants = {
-  primary: "bg-korvix-900 text-white hover:bg-korvix-800",
-  secondary: "border border-ink-300 bg-white text-ink-700 hover:bg-ink-50",
+  primary: "bg-primary text-primary-fg hover:bg-primary-hover",
+  secondary: "border border-ink-300 bg-surface text-ink-700 hover:bg-ink-50",
   danger: "bg-danger text-white hover:bg-danger/90",
   ghost: "text-ink-600 hover:bg-ink-100 hover:text-ink-900",
 } as const;
@@ -72,7 +72,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, React.TextareaHTMLAttrib
 
 export function FormError({ message }: { message?: string | null }) {
   if (!message) return null;
-  return <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">{message}</p>;
+  return <p role="alert" className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2.5 text-sm text-danger">{message}</p>;
 }
 
 export function IconButton({
@@ -88,7 +88,7 @@ export function IconButton({
       title={label}
       className={cn(
         "focus-ring inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors disabled:opacity-50",
-        tone === "danger" ? "text-ink-500 hover:bg-red-50 hover:text-danger" : "text-ink-500 hover:bg-ink-100 hover:text-ink-900",
+        tone === "danger" ? "text-ink-500 hover:bg-danger/10 hover:text-danger" : "text-ink-500 hover:bg-ink-100 hover:text-ink-900",
         className,
       )}
       {...props}

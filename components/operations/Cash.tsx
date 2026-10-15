@@ -8,6 +8,7 @@ import { todayISO } from "@/lib/format";
 import { Modal } from "@/components/ui/Modal";
 import { Field, FormError, IconButton, Input, Select, buttonClass } from "@/components/ui/Form";
 import { CASH_CATEGORIES } from "@/lib/options";
+import { useConfirm } from "@/components/ui/Feedback";
 
 export type CashMovementRecord = { id: string; category: string; direction: string; amount: number; description: string; movement_date: string; source_type: string | null };
 
@@ -28,7 +29,7 @@ function CashModal({ open, onClose, userId, movement }: { open: boolean; onClose
       movement_date: String(fd.get("movement_date") || todayISO()),
     };
     const supabase = createClient();
-    await run(async () => (movement ? supabase.from("cash_movements").update(payload).eq("id", movement.id) : supabase.from("cash_movements").insert({ ...payload, created_by: userId })), { onSuccess: onClose });
+    await run(async () => (movement ? supabase.from("cash_movements").update(payload).eq("id", movement.id) : supabase.from("cash_movements").insert({ ...payload, created_by: userId })), { onSuccess: onClose, success: movement ? "Movimento atualizado." : "Movimento lançado." });
   }
   const categories = movement && !CASH_CATEGORIES.some((c) => c.value === movement.category) ? [...CASH_CATEGORIES, { value: movement.category, label: movement.category }] : CASH_CATEGORIES;
   return (
@@ -65,6 +66,7 @@ export function CreateCashMovementButton({ userId }: { userId: string }) {
 }
 
 export function CashMovementActions({ movement, canDelete = false }: { movement: CashMovementRecord; canDelete?: boolean }) {
+  const confirmDialog = useConfirm();
   const [open, setOpen] = useState(false);
   const { run, busy, error } = useAction();
   // Lançamentos gerados por pagamentos/comissões são mantidos pelas RPCs financeiras;
@@ -73,8 +75,8 @@ export function CashMovementActions({ movement, canDelete = false }: { movement:
     return <span title="Lançamento automático: edite o pagamento de origem" className="inline-flex h-8 w-8 items-center justify-center text-ink-400"><Lock size={14} /></span>;
   }
   async function remove() {
-    if (!window.confirm("Excluir este movimento de caixa?")) return;
-    await run(async () => createClient().from("cash_movements").delete().eq("id", movement.id));
+    if (!(await confirmDialog({ description: "Excluir este movimento de caixa?" }))) return;
+    await run(async () => createClient().from("cash_movements").delete().eq("id", movement.id), { success: "Movimento excluído." });
   }
   return (
     <span className="inline-flex items-center gap-1">

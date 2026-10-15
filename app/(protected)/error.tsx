@@ -11,8 +11,8 @@ export default function ModuleError({ error, reset }: { error: Error & { digest?
     console.error(error);
   }, [error]);
   return (
-    <div role="alert" className="mx-auto max-w-lg rounded-2xl border border-ink-200 bg-white p-8 text-center shadow-panel">
-      <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-red-50 text-danger"><AlertTriangle size={20} /></div>
+    <div role="alert" className="mx-auto max-w-lg rounded-2xl border border-ink-200 bg-surface p-8 text-center shadow-panel">
+      <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-danger/10 text-danger"><AlertTriangle size={20} /></div>
       <h2 className="mt-4 text-lg font-semibold text-ink-900">Não foi possível exibir esta página</h2>
       <p className="mt-1 text-sm text-ink-500">Ocorreu um erro inesperado. Nenhuma alteração foi feita nos seus dados.</p>
       {error.digest && <p className="mt-2 text-xs text-ink-400">Código: {error.digest}</p>}

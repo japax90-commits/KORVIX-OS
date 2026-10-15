@@ -10,6 +10,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Field, FormError, IconButton, Input, Select, buttonClass } from "@/components/ui/Form";
 import { PlanShortcuts } from "@/components/operations/PlanShortcuts";
 import { PAYMENT_TYPES, PAYMENT_METHODS, PAYMENT_STATUSES } from "@/lib/options";
+import { useConfirm } from "@/components/ui/Feedback";
 
 type Client = { id: string; company_name: string };
 export type PaymentRecord = { id: string; amount: number; type: string; method: string; status: string; due_date: string; paid_at: string | null };
@@ -36,7 +37,7 @@ export function CreatePaymentButton({ clients }: { clients: Client[] }) {
           status: "pendente",
           due_date: String(fd.get("due_date") || todayISO()),
         }),
-      { onSuccess: () => setOpen(false) },
+      { onSuccess: () => setOpen(false), success: "Pagamento registrado como pendente." },
     );
   }
 
@@ -51,7 +52,7 @@ export function CreatePaymentButton({ clients }: { clients: Client[] }) {
         footer={<><button type="button" onClick={() => setOpen(false)} className={buttonClass("secondary")}>Cancelar</button><button type="submit" form="payment-form" disabled={busy} className={buttonClass("primary")}>{busy ? "Salvando..." : "Salvar"}</button></>}
       >
         <form id="payment-form" onSubmit={onSubmitForm(submit)} className="space-y-4">
-          {clients.length === 0 && <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">Cadastre um cliente antes de registrar pagamentos.</p>}
+          {clients.length === 0 && <p className="rounded-lg bg-warning/10 p-3 text-sm text-warning">Cadastre um cliente antes de registrar pagamentos.</p>}
           <Field label="Cliente" error={fieldErrors.client_id}>
             <Select name="client_id" required defaultValue="">
               <option value="" disabled>Selecione o cliente</option>
@@ -77,10 +78,11 @@ export function CreatePaymentButton({ clients }: { clients: Client[] }) {
 }
 
 export function ConfirmPaymentButton({ id }: { id: string }) {
+  const confirmDialog = useConfirm();
   const { run, busy, error } = useAction();
   async function confirm() {
-    if (!window.confirm("Confirmar este pagamento como pago? O caixa e as comissões serão gerados.")) return;
-    await run(async () => createClient().rpc("confirm_payment_and_sync_finance", { p_payment_id: id }));
+    if (!(await confirmDialog({ description: "Confirmar este pagamento como pago? O caixa e as comissões serão gerados.", title: "Confirmar pagamento", confirmLabel: "Confirmar pagamento", tone: "default" }))) return;
+    await run(async () => createClient().rpc("confirm_payment_and_sync_finance", { p_payment_id: id }), { success: "Pagamento confirmado; caixa e comissões gerados." });
   }
   return (
     <span className="inline-flex items-center gap-2">
@@ -93,6 +95,7 @@ export function ConfirmPaymentButton({ id }: { id: string }) {
 }
 
 export function PaymentEditButton({ payment, canDelete = false }: { payment: PaymentRecord; canDelete?: boolean }) {
+  const confirmDialog = useConfirm();
   const [open, setOpen] = useState(false);
   const { run, busy, error, fieldErrors, fail } = useAction();
   const del = useAction();
@@ -111,13 +114,13 @@ export function PaymentEditButton({ payment, canDelete = false }: { payment: Pay
           p_due_date: String(fd.get("due_date")),
           p_paid_at: payment.paid_at,
         }),
-      { onSuccess: () => setOpen(false) },
+      { onSuccess: () => setOpen(false), success: "Pagamento atualizado; caixa e comissões recalculados." },
     );
   }
 
   async function remove() {
-    if (!window.confirm("Excluir este pagamento? As comissões e os lançamentos de caixa vinculados também serão removidos.")) return;
-    await del.run(async () => createClient().rpc("delete_payment_and_sync_finance", { p_payment_id: payment.id }));
+    if (!(await confirmDialog({ description: "Excluir este pagamento? As comissões e os lançamentos de caixa vinculados também serão removidos." }))) return;
+    await del.run(async () => createClient().rpc("delete_payment_and_sync_finance", { p_payment_id: payment.id }), { success: "Pagamento excluído." });
   }
 
   return (

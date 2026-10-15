@@ -7,9 +7,9 @@ export default function Loading() {
         <div className="h-4 w-80 max-w-full rounded-lg bg-ink-200/70" />
       </div>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {Array.from({ length: 4 }, (_, i) => <div key={i} className="h-24 rounded-xl bg-white shadow-panel" />)}
+        {Array.from({ length: 4 }, (_, i) => <div key={i} className="h-24 rounded-xl bg-surface shadow-panel" />)}
       </div>
-      <div className="h-72 rounded-xl bg-white shadow-panel" />
+      <div className="h-72 rounded-xl bg-surface shadow-panel" />
       <span className="sr-only">Carregando…</span>
     </div>
   );

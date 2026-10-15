@@ -9,6 +9,7 @@ import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
 import { Field, FormError, IconButton, Input, Select, buttonClass } from "@/components/ui/Form";
 import { cn } from "@/lib/utils";
+import { useConfirm } from "@/components/ui/Feedback";
 
 export type AgendaEvent = { id: string; title: string; type: string; start_at: string; end_at: string | null; responsible_name: string; responsible_user_id: string | null; status: string; related_to: string | null };
 type User = { id: string; name: string };
@@ -55,7 +56,7 @@ function EventModal({ open, onClose, event, userId, userName, users, isAdmin }: 
       related_to: String(fd.get("related_to") || "").trim() || null,
     };
     const supabase = createClient();
-    await run(async () => (event ? supabase.from("agenda_events").update(payload).eq("id", event.id) : supabase.from("agenda_events").insert({ ...payload, created_by: userId })), { onSuccess: onClose });
+    await run(async () => (event ? supabase.from("agenda_events").update(payload).eq("id", event.id) : supabase.from("agenda_events").insert({ ...payload, created_by: userId })), { onSuccess: onClose, success: event ? "Evento atualizado." : "Evento criado." });
   }
 
   const defaultResponsible = event ? event.responsible_user_id ?? SHARED : userId;
@@ -115,6 +116,7 @@ function addMonths(key: string, months: number) {
 }
 
 export function AgendaView({ events, userId, userName, users, isAdmin }: { events: AgendaEvent[]; userId: string; userName: string; users: User[]; isAdmin: boolean }) {
+  const confirmDialog = useConfirm();
   const [view, setView] = useState<View>("Semana");
   const [anchor, setAnchor] = useState(todayISO);
   const [editing, setEditing] = useState<AgendaEvent | null>(null);
@@ -153,23 +155,23 @@ export function AgendaView({ events, userId, userName, users, isAdmin }: { event
   }
 
   async function remove(e: AgendaEvent) {
-    if (!window.confirm(`Excluir o evento "${e.title}"?`)) return;
-    await run(async () => createClient().from("agenda_events").delete().eq("id", e.id));
+    if (!(await confirmDialog({ description: `Excluir o evento "${e.title}"?` }))) return;
+    await run(async () => createClient().from("agenda_events").delete().eq("id", e.id), { success: "Evento excluído." });
   }
 
   const today = todayISO();
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex w-fit gap-1 rounded-lg border border-ink-300 bg-white p-1 text-xs">
+        <div className="flex w-fit gap-1 rounded-lg border border-ink-300 bg-surface p-1 text-xs">
           {(["Dia", "Semana", "Mês"] as View[]).map((v) => (
-            <button key={v} type="button" onClick={() => setView(v)} aria-pressed={view === v} className={cn("rounded-md px-3 py-1.5 font-medium", view === v ? "bg-korvix-900 text-white" : "text-ink-500 hover:text-ink-900")}>{v}</button>
+            <button key={v} type="button" onClick={() => setView(v)} aria-pressed={view === v} className={cn("rounded-md px-3 py-1.5 font-medium", view === v ? "bg-primary text-primary-fg" : "text-ink-500 hover:text-ink-900")}>{v}</button>
           ))}
         </div>
         <div className="flex items-center gap-2">
-          <IconButton label="Período anterior" onClick={() => shift(-1)} className="border border-ink-300 bg-white"><ChevronLeft size={16} /></IconButton>
+          <IconButton label="Período anterior" onClick={() => shift(-1)} className="border border-ink-300 bg-surface"><ChevronLeft size={16} /></IconButton>
           <button type="button" onClick={() => setAnchor(todayISO())} className={buttonClass("secondary", "px-3 py-1.5 text-xs")}>Hoje</button>
-          <IconButton label="Próximo período" onClick={() => shift(1)} className="border border-ink-300 bg-white"><ChevronRight size={16} /></IconButton>
+          <IconButton label="Próximo período" onClick={() => shift(1)} className="border border-ink-300 bg-surface"><ChevronRight size={16} /></IconButton>
           <span className="ml-1 text-sm font-medium capitalize text-ink-900">{range.label}</span>
         </div>
       </div>
@@ -190,7 +192,7 @@ export function AgendaView({ events, userId, userName, users, isAdmin }: { event
                       <p className="truncate text-xs text-ink-500">{TYPES.find((t) => t.value === e.type)?.label ?? e.type} · {e.responsible_name}{e.related_to ? ` · ${e.related_to}` : ""}</p>
                     </div>
                     <div className="flex w-full items-center justify-end gap-1 sm:w-auto">
-                      <select aria-label={`Status de ${e.title}`} value={e.status} onChange={(ev) => setStatus(e, ev.target.value)} className="focus-ring rounded-md border border-ink-200 bg-white px-2 py-1 text-xs text-ink-700">
+                      <select aria-label={`Status de ${e.title}`} value={e.status} onChange={(ev) => setStatus(e, ev.target.value)} className="focus-ring rounded-md border border-ink-200 bg-surface px-2 py-1 text-xs text-ink-700">
                         {STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
                         {!STATUSES.some((s) => s.value === e.status) && <option value={e.status}>{e.status}</option>}
                       </select>

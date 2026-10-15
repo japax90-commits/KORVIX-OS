@@ -7,17 +7,19 @@ import { onSubmitForm, useAction } from "@/lib/hooks/useAction";
 import { Modal } from "@/components/ui/Modal";
 import { Field, FormError, IconButton, Input, Select, buttonClass } from "@/components/ui/Form";
 import { ROLES } from "@/lib/options";
+import { useConfirm } from "@/components/ui/Feedback";
 
 type Member = { id: string; name: string; email: string; role: string; active: boolean; avatar_initials: string | null };
 
 export function TeamMemberEdit({ member }: { member: Member }) {
+  const confirmDialog = useConfirm();
   const [open, setOpen] = useState(false);
   const { run, busy, error, fieldErrors, fail } = useAction();
   async function submit(fd: FormData) {
     const name = String(fd.get("name") || "").trim();
     if (!name) return fail({ name: "Informe o nome." });
     const active = fd.get("active") === "true";
-    if (!active && !window.confirm(`Desativar ${name}? A pessoa perde o acesso ao KORVIX OS no próximo carregamento.`)) return;
+    if (!active && !(await confirmDialog({ description: `Desativar ${name}? A pessoa perde o acesso ao KORVIX OS no próximo carregamento.`, title: "Desativar acesso", confirmLabel: "Desativar" }))) return;
     await run(
       async () =>
         createClient().from("users").update({
@@ -26,7 +28,7 @@ export function TeamMemberEdit({ member }: { member: Member }) {
           active,
           avatar_initials: String(fd.get("avatar_initials") || "").trim().toUpperCase().slice(0, 2) || null,
         }).eq("id", member.id),
-      { onSuccess: () => setOpen(false) },
+      { onSuccess: () => setOpen(false), success: "Membro da equipe atualizado." },
     );
   }
   return (

@@ -8,10 +8,10 @@ export type UserProfile = {
 
 export const KORVIX_ADMIN_EMAIL = "korvixdigital@gmail.com";
 
-/** Ordem de prioridade usada para escolher a página inicial do usuário. */
+/** Ordem de prioridade usada para escolher a página inicial (CRM primeiro). */
 export const MODULES = [
-  "dashboard",
   "crm",
+  "dashboard",
   "comercial",
   "clientes",
   "financeiro",

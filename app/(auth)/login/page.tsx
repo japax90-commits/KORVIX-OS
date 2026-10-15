@@ -25,16 +25,16 @@ export default function LoginPage({ searchParams }: { searchParams?: { error?: s
         <div className="relative flex items-center gap-2 text-xs text-korvix-300"><ShieldCheck size={14} /><span>Acesso restrito à equipe interna da Korvix Digital</span></div>
       </div>
 
-      <div className="flex flex-1 items-center justify-center bg-white px-6 py-12 sm:px-10">
+      <div className="flex flex-1 items-center justify-center bg-surface px-6 py-12 sm:px-10">
         <div className="w-full max-w-sm">
           <div className="mb-8 flex items-center gap-2.5 lg:hidden"><div className="flex h-9 w-9 items-center justify-center rounded-lg bg-korvix-900"><span className="text-sm font-bold text-korvix-200">K</span></div><span className="text-[15px] font-semibold tracking-tight text-ink-900">KORVIX <span className="text-korvix-600">OS</span></span></div>
           <h2 className="text-2xl font-semibold tracking-tight text-ink-900">Entrar</h2><p className="mt-1.5 text-sm text-ink-500">Use suas credenciais internas da Korvix Digital.</p>
-          {searchParams?.message ? <div role="status" className="mt-5 rounded-lg border border-green-200 bg-green-50 px-3.5 py-3 text-sm text-green-800">{searchParams.message}</div> : null}
-          {searchParams?.error ? <div role="alert" className="mt-5 rounded-lg border border-red-200 bg-red-50 px-3.5 py-3 text-sm text-red-700">{searchParams.error}</div> : null}
+          {searchParams?.message ? <div role="status" className="mt-5 rounded-lg border border-success/30 bg-success/10 px-3.5 py-3 text-sm text-success">{searchParams.message}</div> : null}
+          {searchParams?.error ? <div role="alert" className="mt-5 rounded-lg border border-danger/30 bg-danger/10 px-3.5 py-3 text-sm text-danger">{searchParams.error}</div> : null}
           <form className="mt-8 space-y-5" action={signIn}>
             <div><label htmlFor="email" className="mb-1.5 block text-sm font-medium text-ink-700">E-mail</label><input id="email" name="email" type="email" autoComplete="email" placeholder="voce@korvixdigital.com" className="focus-ring w-full rounded-lg border border-ink-300 px-3.5 py-2.5 text-[15px] text-ink-900 placeholder:text-ink-500/60" required /></div>
             <div><div className="mb-1.5 flex items-center justify-between"><label htmlFor="password" className="block text-sm font-medium text-ink-700">Senha</label><Link href="/forgot-password" className="text-xs font-medium text-korvix-600 hover:text-korvix-700">Esqueci minha senha</Link></div><input id="password" name="password" type="password" autoComplete="current-password" placeholder="••••••••" className="focus-ring w-full rounded-lg border border-ink-300 px-3.5 py-2.5 text-[15px] text-ink-900 placeholder:text-ink-500/60" required /></div>
-            <button type="submit" className="focus-ring flex w-full items-center justify-center gap-2 rounded-lg bg-korvix-900 px-4 py-2.5 text-[15px] font-medium text-white transition-colors hover:bg-korvix-800">Entrar<ArrowRight size={16} /></button>
+            <button type="submit" className="focus-ring flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-[15px] font-medium text-primary-fg transition-colors hover:bg-primary-hover">Entrar<ArrowRight size={16} /></button>
           </form>
           <p className="mt-8 text-center text-xs text-ink-500">Acesso protegido por autenticação do Supabase.</p>
         </div>

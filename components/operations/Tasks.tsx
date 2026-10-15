@@ -8,6 +8,7 @@ import { todayISO } from "@/lib/format";
 import { Modal } from "@/components/ui/Modal";
 import { Field, FormError, IconButton, Input, Select, buttonClass } from "@/components/ui/Form";
 import { PRIORITIES, TASK_STATUSES, ENTITY_TYPES } from "@/lib/options";
+import { useConfirm } from "@/components/ui/Feedback";
 
 export type TaskRecord = { id: string; title: string; assigned_to_id: string | null; assigned_to_name?: string; priority: string; status: string; due_date: string; related_entity_type: string; related_entity_label: string | null };
 type User = { id: string; name: string };
@@ -30,7 +31,7 @@ function TaskModal({ open, onClose, task, userId, userName, users, isAdmin }: { 
       related_entity_label: String(fd.get("related_entity_label") || "").trim(),
     };
     const supabase = createClient();
-    await run(async () => (task ? supabase.from("tasks").update(payload).eq("id", task.id) : supabase.from("tasks").insert({ ...payload, created_by: userId })), { onSuccess: onClose });
+    await run(async () => (task ? supabase.from("tasks").update(payload).eq("id", task.id) : supabase.from("tasks").insert({ ...payload, created_by: userId })), { onSuccess: onClose, success: task ? "Tarefa atualizada." : "Tarefa criada." });
   }
   return (
     <Modal
@@ -71,16 +72,17 @@ export function CreateTaskButton(props: Shared) {
 }
 
 export function TaskActions({ task, ...shared }: Shared & { task: TaskRecord }) {
+  const confirmDialog = useConfirm();
   const [open, setOpen] = useState(false);
   const { run, busy, error } = useAction();
   const done = task.status === "concluida";
   return (
     <span className="inline-flex items-center gap-1">
-      <IconButton label={done ? "Reabrir tarefa" : "Concluir tarefa"} disabled={busy} onClick={() => run(async () => createClient().from("tasks").update({ status: done ? "pendente" : "concluida" }).eq("id", task.id))} className={done ? "" : "text-success hover:bg-success/10 hover:text-success"}>
+      <IconButton label={done ? "Reabrir tarefa" : "Concluir tarefa"} disabled={busy} onClick={() => run(async () => createClient().from("tasks").update({ status: done ? "pendente" : "concluida" }).eq("id", task.id), { success: done ? "Tarefa reaberta." : "Tarefa concluída." })} className={done ? "" : "text-success hover:bg-success/10 hover:text-success"}>
         {done ? <RotateCcw size={14} /> : <Check size={15} />}
       </IconButton>
       <IconButton label="Editar tarefa" onClick={() => setOpen(true)}><Pencil size={14} /></IconButton>
-      <IconButton label="Excluir tarefa" tone="danger" disabled={busy} onClick={() => window.confirm(`Excluir a tarefa "${task.title}"?`) && run(async () => createClient().from("tasks").delete().eq("id", task.id))}><Trash2 size={14} /></IconButton>
+      <IconButton label="Excluir tarefa" tone="danger" disabled={busy} onClick={async () => (await confirmDialog({ description: `Excluir a tarefa "${task.title}"?` })) && run(async () => createClient().from("tasks").delete().eq("id", task.id), { success: "Tarefa excluída." })}><Trash2 size={14} /></IconButton>
       {error && <span role="alert" className="max-w-[200px] whitespace-normal text-xs text-danger">{error}</span>}
       {open && <TaskModal open onClose={() => setOpen(false)} task={task} {...shared} />}
     </span>

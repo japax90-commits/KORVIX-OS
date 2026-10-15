@@ -9,6 +9,7 @@ import { KORVIX_PLANS, type KorvixPlanName } from "@/lib/business/plans";
 import { Modal } from "@/components/ui/Modal";
 import { Field, FormError, IconButton, Input, Select, buttonClass } from "@/components/ui/Form";
 import { FREQUENCIES, CONTRACT_STATUSES } from "@/lib/options";
+import { useConfirm } from "@/components/ui/Feedback";
 
 export type ContractRecord = { id: string; client_name: string; plan_name: string; value: number; frequency: string; status: string; start_date: string; next_billing_date: string | null };
 type Client = { id: string; company_name: string };
@@ -36,7 +37,7 @@ function ContractModal({ open, onClose, clients, contract }: { open: boolean; on
       next_billing_date: String(fd.get("next_billing_date") || "") || startDate,
     };
     const supabase = createClient();
-    await run(async () => (contract ? supabase.from("contracts").update(data).eq("id", contract.id) : supabase.from("contracts").insert(data)), { onSuccess: onClose });
+    await run(async () => (contract ? supabase.from("contracts").update(data).eq("id", contract.id) : supabase.from("contracts").insert(data)), { onSuccess: onClose, success: contract ? "Contrato atualizado." : "Contrato criado." });
   }
 
   // Clientes renomeados/removidos continuam selecionáveis no contrato existente.
@@ -85,11 +86,12 @@ export function CreateContractButton({ clients }: { clients: Client[] }) {
 }
 
 export function ContractRowActions({ clients, contract, canDelete = false }: { clients: Client[]; contract: ContractRecord; canDelete?: boolean }) {
+  const confirmDialog = useConfirm();
   const [open, setOpen] = useState(false);
   const { run, busy, error } = useAction();
   async function remove() {
-    if (!window.confirm(`Excluir o contrato de ${contract.client_name}? Pagamentos históricos não serão apagados.`)) return;
-    await run(async () => createClient().from("contracts").delete().eq("id", contract.id));
+    if (!(await confirmDialog({ description: `Excluir o contrato de ${contract.client_name}? Pagamentos históricos não serão apagados.` }))) return;
+    await run(async () => createClient().from("contracts").delete().eq("id", contract.id), { success: "Contrato excluído." });
   }
   return (
     <span className="inline-flex items-center gap-1">

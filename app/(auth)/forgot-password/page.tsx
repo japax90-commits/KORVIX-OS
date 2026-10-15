@@ -36,7 +36,7 @@ export default function ForgotPasswordPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-ink-100 px-6 py-12">
-      <div className="w-full max-w-md rounded-2xl bg-white p-7 shadow-sm ring-1 ring-ink-200">
+      <div className="w-full max-w-md rounded-2xl bg-surface p-7 shadow-sm ring-1 ring-ink-200">
         <div className="mb-7 flex items-center gap-2.5">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-korvix-900"><span className="text-sm font-bold text-korvix-200">K</span></div>
           <span className="text-[15px] font-semibold tracking-tight text-ink-900">KORVIX <span className="text-korvix-600">OS</span></span>
@@ -46,7 +46,7 @@ export default function ForgotPasswordPage() {
         <p className="mt-1.5 text-sm leading-relaxed text-ink-500">Informe seu e-mail interno e enviaremos um link seguro para criar uma nova senha.</p>
 
         {sent ? (
-          <div className="mt-6 rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-800">
+          <div className="mt-6 rounded-xl border border-success/30 bg-success/10 p-4 text-sm text-success">
             E-mail de recuperação enviado. Verifique sua caixa de entrada e siga o link recebido.
           </div>
         ) : (
@@ -55,8 +55,8 @@ export default function ForgotPasswordPage() {
               <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-ink-700">E-mail</label>
               <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" placeholder="voce@korvixdigital.com" className="focus-ring w-full rounded-lg border border-ink-300 px-3.5 py-2.5 text-[15px]" required />
             </div>
-            {error && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-            <button disabled={saving} className="focus-ring w-full rounded-lg bg-korvix-900 px-4 py-2.5 text-[15px] font-medium text-white hover:bg-korvix-800">{saving ? "Enviando..." : "Enviar link de recuperação"}</button>
+            {error && <p className="rounded-lg bg-danger/10 p-3 text-sm text-danger">{error}</p>}
+            <button disabled={saving} className="focus-ring w-full rounded-lg bg-primary px-4 py-2.5 text-[15px] font-medium text-primary-fg hover:bg-primary-hover">{saving ? "Enviando..." : "Enviar link de recuperação"}</button>
           </form>
         )}
 

@@ -8,6 +8,7 @@ import { todayISO } from "@/lib/format";
 import { Modal } from "@/components/ui/Modal";
 import { Field, FormError, IconButton, Input, Select, buttonClass } from "@/components/ui/Form";
 import { CLIENT_STATUSES } from "@/lib/options";
+import { useConfirm } from "@/components/ui/Feedback";
 
 export type ClientRecord = {
   id: string;
@@ -42,7 +43,7 @@ function ClientModal({ open, onClose, client, currentUserId }: { open: boolean; 
         client
           ? supabase.from("clients").update(payload).eq("id", client.id)
           : supabase.from("clients").insert({ ...payload, origin_owner_id: currentUserId, account_manager_id: currentUserId, entry_date: todayISO() }),
-      { onSuccess: onClose },
+      { onSuccess: onClose, success: client ? "Cliente atualizado." : "Cliente cadastrado." },
     );
   }
 
@@ -86,12 +87,13 @@ export function CreateClientButton({ currentUserId }: { currentUserId: string })
 }
 
 export function ClientEditButton({ client, canDelete = false }: { client: ClientRecord; canDelete?: boolean }) {
+  const confirmDialog = useConfirm();
   const [open, setOpen] = useState(false);
   const { run, busy, error } = useAction();
 
   async function remove() {
-    if (!window.confirm(`Excluir o cliente "${client.company_name}"? Esta ação não pode ser desfeita.`)) return;
-    await run(async () => createClient().from("clients").delete().eq("id", client.id));
+    if (!(await confirmDialog({ description: `Excluir o cliente "${client.company_name}"? Esta ação não pode ser desfeita.` }))) return;
+    await run(async () => createClient().from("clients").delete().eq("id", client.id), { success: "Cliente excluído." });
   }
 
   return (

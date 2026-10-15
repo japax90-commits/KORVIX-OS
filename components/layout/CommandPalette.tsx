@@ -49,8 +49,8 @@ export function CommandPalette({ open, onClose, allowedModules }: { open: boolea
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-start justify-center bg-ink-900/50 px-4 pt-[12vh] backdrop-blur-[2px]" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div role="dialog" aria-modal="true" aria-label="Buscar módulo" className="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl">
+    <div className="fixed inset-0 z-[60] flex items-start justify-center bg-black/55 px-4 pt-[12vh] backdrop-blur-[2px]" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div role="dialog" aria-modal="true" aria-label="Buscar módulo" className="w-full max-w-lg overflow-hidden rounded-2xl bg-surface shadow-2xl">
         <div className="flex items-center gap-3 border-b border-ink-100 px-4">
           <Search size={17} className="text-ink-400" />
           <input

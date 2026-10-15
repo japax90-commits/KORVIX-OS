@@ -15,7 +15,7 @@ export function StatCard({
   trend?: { positive: boolean; label: string };
 }) {
   return (
-    <div className="min-w-0 rounded-xl border border-ink-100 bg-white p-4 shadow-panel sm:p-5">
+    <div className="min-w-0 rounded-xl border border-ink-100 bg-surface p-4 shadow-panel sm:p-5">
       <div className="flex items-start justify-between gap-2">
         <p className="min-w-0 text-[13px] leading-snug text-ink-500 sm:text-sm">{label}</p>
         {Icon && (

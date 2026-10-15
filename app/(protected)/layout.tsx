@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { DesktopSidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
 import { FlashMessage } from "@/components/layout/FlashMessage";
+import { FeedbackProvider } from "@/components/ui/Feedback";
 import { allowedModules, isKorvixAdmin, roleLabel } from "@/lib/auth/permissions";
 
 function initials(name: string) {
@@ -35,7 +36,8 @@ export default async function ProtectedLayout({ children }: { children: React.Re
   const name = profile.name || user.email || "Usuário";
 
   return (
-    <div className="flex min-h-screen bg-ink-100">
+    <FeedbackProvider>
+    <div className="flex min-h-screen bg-canvas">
       <DesktopSidebar allowedModules={modules} isAdmin={isAdmin} />
       <div className="flex min-h-screen min-w-0 flex-1 flex-col">
         <Topbar
@@ -54,5 +56,6 @@ export default async function ProtectedLayout({ children }: { children: React.Re
         </main>
       </div>
     </div>
+    </FeedbackProvider>
   );
 }

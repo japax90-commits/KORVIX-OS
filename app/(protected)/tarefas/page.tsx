@@ -63,7 +63,7 @@ export default async function TarefasPage({ searchParams }: { searchParams?: { f
         <CardHeader title={admin ? "Tarefas da equipe" : "Minhas tarefas"} subtitle={`${rows.length} tarefa(s)`} />
         <div className="flex gap-1 overflow-x-auto border-b border-ink-100 px-5 py-3">
           {filters.map((f) => (
-            <Link key={f.value} href={f.value ? `/tarefas?filtro=${f.value}` : "/tarefas"} className={cn("whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium", filter === f.value ? "bg-korvix-900 text-white" : "text-ink-600 hover:bg-ink-100")}>{f.label}</Link>
+            <Link key={f.value} href={f.value ? `/tarefas?filtro=${f.value}` : "/tarefas"} className={cn("whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium", filter === f.value ? "bg-primary text-primary-fg" : "text-ink-600 hover:bg-ink-100")}>{f.label}</Link>
           ))}
         </div>
         <DataTable columns={columns} rows={rows} emptyLabel={filter ? "Nenhuma tarefa neste filtro." : "Nenhuma tarefa aberta. Use Nova tarefa para começar."} />

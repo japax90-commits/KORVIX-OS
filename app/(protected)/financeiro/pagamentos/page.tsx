@@ -63,7 +63,7 @@ export default async function PagamentosPage({ searchParams }: { searchParams?: 
         <CardHeader title="Todos os pagamentos" subtitle="Novos lançamentos entram como pendentes." />
         <div className="flex gap-1 overflow-x-auto border-b border-ink-100 px-5 py-3">
           {filters.map((f) => (
-            <Link key={f.value} href={f.value ? `/financeiro/pagamentos?status=${f.value}` : "/financeiro/pagamentos"} className={cn("whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium", filter === f.value ? "bg-korvix-900 text-white" : "text-ink-600 hover:bg-ink-100")}>
+            <Link key={f.value} href={f.value ? `/financeiro/pagamentos?status=${f.value}` : "/financeiro/pagamentos"} className={cn("whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium", filter === f.value ? "bg-primary text-primary-fg" : "text-ink-600 hover:bg-ink-100")}>
               {f.label}
             </Link>
           ))}

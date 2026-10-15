@@ -18,7 +18,7 @@ describe("isKorvixAdmin", () => {
 
 describe("canAccessModule", () => {
   it("administrador acessa todos os módulos", () => {
-    expect(allowedModules(admin)).toEqual(["dashboard", "crm", "comercial", "clientes", "financeiro", "audiovisual", "agenda", "equipe", "tarefas", "auditoria"]);
+    expect(allowedModules(admin)).toEqual(["crm", "dashboard", "comercial", "clientes", "financeiro", "audiovisual", "agenda", "equipe", "tarefas", "auditoria"]);
   });
   it("cofundador acessa apenas CRM, Agenda e Tarefas", () => {
     expect(allowedModules(cofundador)).toEqual(["crm", "agenda", "tarefas"]);
@@ -47,8 +47,9 @@ describe("rotas", () => {
     expect(moduleForPath("/login")).toBeNull();
     expect(moduleForPath("/")).toBeNull();
   });
-  it("página inicial é o primeiro módulo permitido", () => {
-    expect(homeRouteFor(admin)).toBe("/dashboard");
+  it("página inicial é o CRM para todos os perfis com acesso a ele", () => {
+    expect(homeRouteFor(admin)).toBe("/crm");
+    expect(homeRouteFor(cofundador)).toBe("/crm");
     expect(homeRouteFor(vendedor)).toBe("/crm");
     expect(homeRouteFor({ ...vendedor, active: false })).toMatch(/^\/login/);
   });

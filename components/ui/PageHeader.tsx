@@ -13,9 +13,9 @@ export function PageHeader({ title, description, actions }: { title: string; des
 
 export function ErrorState({ title = "Não foi possível carregar os dados", message }: { title?: string; message?: string }) {
   return (
-    <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">
+    <div role="alert" className="rounded-xl border border-danger/30 bg-danger/10 p-5 text-sm text-danger">
       <p className="font-medium">{title}</p>
-      {message && <p className="mt-1 text-red-600/90">{message}</p>}
+      {message && <p className="mt-1 text-danger/90">{message}</p>}
     </div>
   );
 }

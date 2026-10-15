@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { friendlyError } from "@/lib/errors";
+import { useToast } from "@/components/ui/Feedback";
 
 export { friendlyError };
 
@@ -19,6 +20,7 @@ export type FieldErrors = Record<string, string>;
  */
 export function useAction() {
   const router = useRouter();
+  const toast = useToast();
   const running = useRef(false);
   const [busy, setBusy] = useState(false);
   const [error, setErrorState] = useState("");
@@ -35,7 +37,7 @@ export function useAction() {
   }, []);
 
   const run = useCallback(
-    async (fn: () => Promise<Result>, opts?: { onSuccess?: () => void }) => {
+    async (fn: () => Promise<Result>, opts?: { onSuccess?: () => void; success?: string }) => {
       if (running.current) return false;
       running.current = true;
       setBusy(true);
@@ -48,6 +50,8 @@ export function useAction() {
           return false;
         }
         opts?.onSuccess?.();
+        // Só notifica depois que o banco confirmou a operação.
+        if (opts?.success) toast(opts.success);
         startTransition(() => router.refresh());
         return true;
       } catch (e) {
@@ -58,7 +62,7 @@ export function useAction() {
         setBusy(false);
       }
     },
-    [router],
+    [router, toast],
   );
 
   return { run, busy: busy || refreshing, error, setError, fieldErrors, fail };

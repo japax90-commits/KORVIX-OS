@@ -40,6 +40,7 @@ export function NewOpportunityButton({ currentUserId, users, isAdmin = false }: 
         entry_date: todayISO(),
         last_interaction_at: now,
       }),
+      { success: "Oportunidade criada no funil." },
     );
     if (ok) setOpen(false);
   }

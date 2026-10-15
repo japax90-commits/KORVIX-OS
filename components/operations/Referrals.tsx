@@ -7,6 +7,7 @@ import { onSubmitForm, useAction } from "@/lib/hooks/useAction";
 import { Modal } from "@/components/ui/Modal";
 import { Field, FormError, IconButton, Input, Select, buttonClass } from "@/components/ui/Form";
 import { REFERRAL_STATUSES } from "@/lib/options";
+import { useConfirm } from "@/components/ui/Feedback";
 
 export function CreateReferralButton({ userName }: { userName: string }) {
   const [open, setOpen] = useState(false);
@@ -24,7 +25,7 @@ export function CreateReferralButton({ userName }: { userName: string }) {
     if (Object.keys(errors).length) return fail(errors);
     await run(
       async () => createClient().from("referral_commissions").insert({ client_name: client, referrer_name: referrer, commission_type: type, commission_value: value, status: "pendente", negotiated_by: userName }),
-      { onSuccess: () => setOpen(false) },
+      { onSuccess: () => setOpen(false), success: "Indicação registrada." },
     );
   }
   return (
@@ -53,6 +54,7 @@ export function CreateReferralButton({ userName }: { userName: string }) {
 }
 
 export function ReferralActions({ id, status, canDelete = false }: { id: string; status: string; canDelete?: boolean }) {
+  const confirmDialog = useConfirm();
   const { run, busy, error } = useAction();
   return (
     <span className="inline-flex items-center gap-1">
@@ -60,14 +62,14 @@ export function ReferralActions({ id, status, canDelete = false }: { id: string;
         aria-label="Status da indicação"
         value={status}
         disabled={busy}
-        onChange={(e) => run(async () => createClient().from("referral_commissions").update({ status: e.target.value }).eq("id", id))}
-        className="focus-ring rounded-md border border-ink-200 bg-white px-2 py-1 text-xs text-ink-700"
+        onChange={(e) => run(async () => createClient().from("referral_commissions").update({ status: e.target.value }).eq("id", id), { success: "Status da indicação atualizado." })}
+        className="focus-ring rounded-md border border-ink-200 bg-surface px-2 py-1 text-xs text-ink-700"
       >
         {REFERRAL_STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
         {!REFERRAL_STATUSES.some((s) => s.value === status) && <option value={status}>{status}</option>}
       </select>
       {canDelete && (
-        <IconButton label="Excluir indicação" tone="danger" disabled={busy} onClick={() => window.confirm("Excluir esta indicação?") && run(async () => createClient().from("referral_commissions").delete().eq("id", id))}>
+        <IconButton label="Excluir indicação" tone="danger" disabled={busy} onClick={async () => (await confirmDialog({ description: "Excluir esta indicação?" })) && run(async () => createClient().from("referral_commissions").delete().eq("id", id), { success: "Indicação excluída." })}>
           <Trash2 size={14} />
         </IconButton>
       )}
