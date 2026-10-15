@@ -1,3 +1,55 @@
-import{Card,CardHeader,CardBody}from"@/components/ui/Card";import{FinanceSubnav}from"../FinanceSubnav";import{createClient}from"@/lib/supabase/server";import{ContractActions}from"@/components/operations/ContractActions";
-const money=(n:number)=>n.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
-export default async function ContratosPage(){const s=await createClient();const{data:{user}}=await s.auth.getUser();if(!user)return null;const[{data:contracts,error},{data:clients}]=await Promise.all([s.from("contracts").select("id,client_name,plan_name,value,frequency,status,start_date,next_billing_date").order("created_at",{ascending:false}),s.from("clients").select("id,company_name").order("company_name")]);if(error)return <div className="rounded-lg border border-red-200 bg-red-50 p-5 text-sm text-red-700">Erro ao carregar contratos: {error.message}</div>;return <div className="space-y-6"><div className="flex items-end justify-between"><div><h2 className="text-xl font-semibold text-ink-900">Contratos</h2><p className="text-sm text-ink-500">Contratos reais e base da recorrência.</p></div><ContractActions clients={clients??[]}/></div><FinanceSubnav active="/financeiro/contratos"/><Card><CardHeader title="Contratos" subtitle="Planos reais: R$ 1.000, R$ 2.000 e R$ 3.000."/><CardBody className="!p-0"><div className="divide-y divide-ink-100">{(contracts??[]).map(c=><div key={c.id} className="flex items-center justify-between gap-4 px-5 py-4"><div><p className="font-medium text-ink-900">{c.client_name}</p><p className="text-xs text-ink-500">{c.plan_name} · {c.frequency} · próximo {c.next_billing_date?new Date(c.next_billing_date+"T00:00:00").toLocaleDateString("pt-BR"):"—"}</p></div><div className="flex items-center gap-4"><div className="text-right"><p className="font-semibold text-ink-900">{money(Number(c.value))}</p><p className="text-xs capitalize text-ink-500">{c.status}</p></div><ContractActions clients={clients??[]} contract={{...c,value:Number(c.value),next_billing_date:c.next_billing_date??null}}/></div></div>)}{(contracts??[]).length===0&&<p className="p-5 text-sm text-ink-500">Nenhum contrato cadastrado.</p>}</div></CardBody></Card></div>}
+import { Card, CardHeader } from "@/components/ui/Card";
+import { StatusBadge } from "@/components/ui/Badge";
+import { DataTable, type Column } from "@/components/ui/Table";
+import { StatCard } from "@/components/ui/StatCard";
+import { PageHeader, ErrorState } from "@/components/ui/PageHeader";
+import { FinanceSubnav } from "../FinanceSubnav";
+import { createClient } from "@/lib/supabase/server";
+import { isKorvixAdmin } from "@/lib/auth/permissions";
+import { CreateContractButton, ContractRowActions } from "@/components/operations/Contracts";
+import { calculateMRR } from "@/lib/finance/calculations";
+import { formatDate, formatMoney } from "@/lib/format";
+import { FREQUENCIES } from "@/lib/options";
+import { requireModule } from "@/lib/auth/server";
+
+const frequencyLabel = Object.fromEntries(FREQUENCIES.map((f) => [f.value, f.label]));
+
+export default async function ContratosPage({ searchParams = {} }: { searchParams?: Record<string, string | undefined> }) {
+  await requireModule("financeiro");
+  const s = await createClient();
+  const { data: { user } } = await s.auth.getUser();
+  if (!user) return null;
+  const [{ data: contracts, error }, { data: clients }, { data: profile }] = await Promise.all([
+    s.from("contracts").select("id,client_name,plan_name,value,frequency,status,start_date,next_billing_date").order("created_at", { ascending: false }),
+    s.from("clients").select("id,company_name").order("company_name"),
+    s.from("users").select("id,email,role,active").eq("id", user.id).maybeSingle(),
+  ]);
+  if (error) return <ErrorState title="Erro ao carregar contratos" message={error.message} />;
+  const rows = (contracts ?? []).map((c) => ({ ...c, value: Number(c.value), next_billing_date: c.next_billing_date ?? null }));
+  const canDelete = isKorvixAdmin(profile);
+  const columns: Column<(typeof rows)[number]>[] = [
+    { header: "Cliente", sortKey: "cliente", sortValue: (c) => c.client_name, cell: (c) => <div><p className="font-medium text-ink-900">{c.client_name}</p><p className="text-xs text-ink-500">{c.plan_name}</p></div> },
+    { header: "Valor", sortKey: "valor", sortValue: (c) => c.value, cell: (c) => formatMoney(c.value) },
+    { header: "Frequência", cell: (c) => frequencyLabel[c.frequency] ?? c.frequency, hideOnMobile: true },
+    { header: "Início", sortKey: "inicio", sortValue: (c) => c.start_date, cell: (c) => formatDate(c.start_date), hideOnMobile: true },
+    { header: "Próxima cobrança", sortKey: "cobranca", sortValue: (c) => c.next_billing_date, cell: (c) => formatDate(c.next_billing_date), hideOnMobile: true },
+    { header: "Status", sortKey: "status", sortValue: (c) => c.status, cell: (c) => <StatusBadge status={c.status} /> },
+    { header: "Ações", className: "text-right", cell: (c) => <div className="flex justify-end"><ContractRowActions clients={clients ?? []} contract={c} canDelete={canDelete} /></div> },
+  ];
+  const active = rows.filter((c) => c.status === "ativo");
+  return (
+    <div className="space-y-6">
+      <PageHeader breadcrumbs={[{ label: "Financeiro", href: "/financeiro" }, { label: "Contratos" }]} title="Contratos" description="Contratos reais e base da recorrência." actions={<CreateContractButton clients={clients ?? []} />} />
+      <FinanceSubnav active="/financeiro/contratos" />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+        <StatCard label="Contratos ativos" value={String(active.length)} />
+        <StatCard label="MRR" value={formatMoney(calculateMRR(rows))} helper="Receita recorrente mensal" />
+        <StatCard label="Total de contratos" value={String(rows.length)} />
+      </div>
+      <Card>
+        <CardHeader title="Contratos" subtitle="Planos oficiais: Essencial, Intermediário e Completo." />
+        <DataTable navigation={{ pathname: "/financeiro/contratos", params: searchParams }} columns={columns} rows={rows} emptyLabel="Nenhum contrato cadastrado." />
+      </Card>
+    </div>
+  );
+}

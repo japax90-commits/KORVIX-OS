@@ -20,24 +20,22 @@ export interface NavItem {
   description: string;
 }
 
-// Estrutura de navegação prevista no MVP (seção 4 e 38 da Especificação Técnica
-// Master V2.0). No protótipo, todos os itens são exibidos para fins de
-// demonstração; na versão com RBAC real, esta lista é filtrada por
-// user_module_access do usuário logado antes de ser renderizada.
+// Navegação principal. O CRM é o centro da operação e a página inicial; a
+// lista é filtrada pelas permissões do usuário (lib/auth/permissions.ts).
 export const primaryNav: NavItem[] = [
-  {
-    href: "/dashboard",
-    label: "Dashboard",
-    module: "dashboard",
-    icon: LayoutDashboard,
-    description: "Korvix Command Center",
-  },
   {
     href: "/crm",
     label: "CRM",
     module: "crm",
     icon: Target,
     description: "Leads e oportunidades",
+  },
+  {
+    href: "/dashboard",
+    label: "Visão geral",
+    module: "dashboard",
+    icon: LayoutDashboard,
+    description: "Indicadores da operação",
   },
   {
     href: "/comercial",

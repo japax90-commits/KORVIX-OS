@@ -1,16 +1,472 @@
 "use client";
-import { FormEvent, useState } from "react";
+
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Archive, CalendarClock, ChevronLeft, ChevronRight, Search, Trash2, UserPlus } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { Archive, Trash2, X } from "lucide-react";
-const stages=["lead","qualificacao","proposta","negociacao","ganho","perdido"] as const;
-const labels:Record<(typeof stages)[number],string>={lead:"Lead",qualificacao:"Qualificação",proposta:"Proposta",negociacao:"Negociação",ganho:"Ganho",perdido:"Perdido"};
-const probabilities:Record<(typeof stages)[number],number>={lead:10,qualificacao:25,proposta:50,negociacao:70,ganho:100,perdido:0};
-type Stage=(typeof stages)[number];
-type Row={id:string;client_name:string;origin_owner_id:string|null;closing_user_id:string|null;channel:string|null;stage:string;priority:string|null;estimated_value:number|null;probability:number|null;next_action:string|null;next_followup_at:string|null;loss_reason:string|null};
-type User={id:string;name:string};
-export function CrmClientV2({opportunities,users,currentUserId,isAdmin=false}:{opportunities:Row[];users:User[];currentUserId:string;isAdmin?:boolean}){const[items,setItems]=useState(opportunities),[selected,setSelected]=useState<Row|null>(null),[error,setError]=useState(""),[saving,setSaving]=useState(false);function normalizeStage(v:string):Stage{return (stages as readonly string[]).includes(v)?v as Stage:"lead"}function toLocal(v:string|null){return v?v.slice(0,16):""}function toIso(v:string){if(!v)return null;const d=new Date(v);return Number.isNaN(d.getTime())?null:d.toISOString()}
-async function move(id:string,stage:Stage){setError("");const{data,error:e}=await createClient().from("opportunities").update({stage,probability:probabilities[stage],last_interaction_at:new Date().toISOString()}).eq("id",id).select("*").single();if(e){setError(e.message);return}if(data)setItems(c=>c.map(i=>i.id===id?data as Row:i))}
-async function archive(id:string){if(!window.confirm("Arquivar este lead?"))return;const{error:e}=await createClient().from("opportunities").update({archived_at:new Date().toISOString()}).eq("id",id);if(e){setError(e.message);return}setItems(c=>c.filter(i=>i.id!==id))}
-async function remove(id:string){if(!window.confirm("Excluir definitivamente este lead? Esta ação não pode ser desfeita."))return;const{error:e}=await createClient().from("opportunities").delete().eq("id",id);if(e){setError(e.message);return}setItems(c=>c.filter(i=>i.id!==id))}
-async function save(e:FormEvent<HTMLFormElement>){e.preventDefault();if(!selected)return;setSaving(true);setError("");const f=new FormData(e.currentTarget),stage=normalizeStage(String(f.get("stage")||"lead")),clientName=String(f.get("client_name")||"").trim(),lossReason=String(f.get("loss_reason")||"").trim();if(!clientName){setError("Informe o cliente.");setSaving(false);return}if(stage==="perdido"&&!lossReason){setError("Informe o motivo da perda.");setSaving(false);return}const estimatedValue=Number(f.get("estimated_value")||0),probability=Number(f.get("probability")||probabilities[stage]);if(!Number.isFinite(estimatedValue)||estimatedValue<0||!Number.isFinite(probability)||probability<0||probability>100){setError("Informe valores válidos.");setSaving(false);return}const payload={client_name:clientName,stage,priority:String(f.get("priority")||"media"),channel:String(f.get("channel")||"whatsapp").trim()||null,origin_owner_id:selected.origin_owner_id,closing_user_id:String(f.get("closing_user_id")||"")||null,estimated_value:estimatedValue,probability,next_action:String(f.get("next_action")||"").trim()||null,next_followup_at:toIso(String(f.get("next_followup_at")||"")),loss_reason:stage==="perdido"?lossReason:null,last_interaction_at:new Date().toISOString()};const{data,error:e2}=await createClient().from("opportunities").update(payload).eq("id",selected.id).select("*").single();if(e2)setError(e2.message);else if(data){setItems(c=>c.map(i=>i.id===data.id?data as Row:i));setSelected(null)}setSaving(false)}
-return <>{error&&<div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}<div className="grid gap-4 overflow-x-auto pb-4 md:grid-cols-3 xl:grid-cols-6">{stages.map(stage=>{const list=items.filter(i=>normalizeStage(i.stage)===stage);return <section key={stage} className="min-w-[250px] rounded-xl border bg-slate-50 p-3"><div className="mb-3 flex justify-between"><h3 className="font-semibold">{labels[stage]}</h3><span className="rounded-full bg-white px-2 py-1 text-xs">{list.length}</span></div>{list.map(item=><article key={item.id} className="mb-3 rounded-xl border bg-white p-3 shadow-sm"><button type="button" className="w-full text-left" onClick={()=>setSelected(item)}><div className="font-medium">{item.client_name}</div><div className="text-sm text-slate-500">R$ {(item.estimated_value||0).toLocaleString("pt-BR",{minimumFractionDigits:2})}</div><div className="mt-1 text-xs text-slate-500">{item.priority||"media"} · {item.probability??probabilities[stage]}%</div></button><select className="mt-2 w-full rounded-lg border p-1.5 text-xs" value={normalizeStage(item.stage)} onChange={e=>move(item.id,normalizeStage(e.target.value))}>{stages.map(option=><option key={option} value={option}>{labels[option]}</option>)}</select><div className="mt-2 flex justify-end gap-1"><button type="button" onClick={()=>archive(item.id)} className="rounded-md p-1.5 text-ink-500 hover:bg-ink-50" title="Arquivar"><Archive size={14}/></button>{isAdmin&&<button type="button" onClick={()=>remove(item.id)} className="rounded-md p-1.5 text-red-500 hover:bg-red-50" title="Excluir definitivamente"><Trash2 size={14}/></button>}</div></article>)}</section>})}</div>{selected&&<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onMouseDown={e=>e.target===e.currentTarget&&setSelected(null)}><form onSubmit={save} className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl"><div className="mb-5 flex justify-between"><h2 className="text-xl font-semibold">Editar oportunidade</h2><button type="button" onClick={()=>setSelected(null)}><X/></button></div><div className="grid gap-4 md:grid-cols-2"><label>Cliente<input name="client_name" defaultValue={selected.client_name} className="mt-1 w-full rounded-lg border p-2.5" required/></label><label>Etapa<select name="stage" defaultValue={normalizeStage(selected.stage)} className="mt-1 w-full rounded-lg border p-2.5">{stages.map(s=><option key={s} value={s}>{labels[s]}</option>)}</select></label><label>Prioridade<select name="priority" defaultValue={selected.priority||"media"} className="mt-1 w-full rounded-lg border p-2.5">{["baixa","media","alta","urgente"].map(p=><option key={p}>{p}</option>)}</select></label><label>Responsável<select name="closing_user_id" defaultValue={selected.closing_user_id||currentUserId} className="mt-1 w-full rounded-lg border p-2.5">{users.map(u=><option key={u.id} value={u.id}>{u.name}</option>)}</select></label><label>Canal<input name="channel" defaultValue={selected.channel||"whatsapp"} className="mt-1 w-full rounded-lg border p-2.5"/></label><label>Valor<input name="estimated_value" type="number" min="0" step="0.01" defaultValue={selected.estimated_value||0} className="mt-1 w-full rounded-lg border p-2.5"/></label><label>Probabilidade %<input name="probability" type="number" min="0" max="100" defaultValue={selected.probability??probabilities[normalizeStage(selected.stage)]} className="mt-1 w-full rounded-lg border p-2.5"/></label><label>Follow-up<input name="next_followup_at" type="datetime-local" defaultValue={toLocal(selected.next_followup_at)} className="mt-1 w-full rounded-lg border p-2.5"/></label><label className="md:col-span-2">Próxima ação<input name="next_action" defaultValue={selected.next_action||""} className="mt-1 w-full rounded-lg border p-2.5"/></label><label className="md:col-span-2">Motivo da perda<textarea name="loss_reason" defaultValue={selected.loss_reason||""} className="mt-1 w-full rounded-lg border p-2.5"/></label></div><div className="mt-6 flex justify-end gap-2"><button type="button" onClick={()=>setSelected(null)} className="rounded-lg border px-4 py-2">Cancelar</button><button disabled={saving} className="rounded-lg bg-slate-900 px-4 py-2 text-white">{saving?"Salvando...":"Salvar alterações"}</button></div></form></div>}</>}
+import { friendlyError } from "@/lib/hooks/useAction";
+import { formatDateTime, formatMoney, fromDateTimeLocal, toDateTimeLocal, todayISO } from "@/lib/format";
+import { Modal } from "@/components/ui/Modal";
+import { Field, FormError, IconButton, Input, Select, Textarea, buttonClass, inputClass } from "@/components/ui/Form";
+
+import { cn } from "@/lib/utils";
+import { STAGES, STAGE_LABELS, STAGE_PROBABILITY, normalizeStage, type Stage } from "@/lib/crm";
+import { CHANNELS, PRIORITIES } from "@/lib/options";
+import { useConfirm, useToast } from "@/components/ui/Feedback";
+
+const stages = STAGES;
+const labels = STAGE_LABELS;
+const probabilities = STAGE_PROBABILITY;
+const stageAccent: Record<Stage, string> = { lead: "bg-ink-400", qualificacao: "bg-korvix-400", proposta: "bg-warning", negociacao: "bg-warning", ganho: "bg-success", perdido: "bg-danger" };
+const priorityLabel = Object.fromEntries(PRIORITIES.map((p) => [p.value, p.label]));
+const channelLabel = Object.fromEntries(CHANNELS.map((c) => [c.value, c.label]));
+
+type Row = {
+  id: string;
+  client_name: string;
+  origin_owner_id: string | null;
+  closing_user_id: string | null;
+  channel: string | null;
+  stage: string;
+  priority: string | null;
+  estimated_value: number | null;
+  probability: number | null;
+  next_action: string | null;
+  next_followup_at: string | null;
+  loss_reason: string | null;
+};
+type User = { id: string; name: string };
+
+
+type ClientRef = { id: string; company_name: string };
+const normalizeName = (name: string) => name.trim().toLowerCase();
+
+export function CrmClientV2({ opportunities, users, currentUserId, isAdmin = false, clients = [], openLeadId }: { opportunities: Row[]; users: User[]; currentUserId: string; isAdmin?: boolean; clients?: ClientRef[]; openLeadId?: string }) {
+  const confirmDialog = useConfirm();
+  const toast = useToast();
+  const [clientList, setClientList] = useState(clients);
+  const [converting, setConverting] = useState<string | null>(null);
+  useEffect(() => setClientList(clients), [clients]);
+  const clientFor = (name: string) => clientList.find((c) => normalizeName(c.company_name) === normalizeName(name));
+
+  // Integração CRM → Clientes: um lead ganho vira cliente (sem duplicar pelo nome).
+  async function convertToClient(item: Row) {
+    if (converting || clientFor(item.client_name)) return;
+    setConverting(item.id);
+    setError("");
+    const { data, error: e } = await createClient()
+      .from("clients")
+      .insert({
+        company_name: item.client_name.trim(),
+        contact_name: item.client_name.trim(),
+        phone: "",
+        origin_owner_id: item.origin_owner_id,
+        account_manager_id: item.closing_user_id ?? item.origin_owner_id,
+        operational_status: "onboarding",
+        entry_date: todayISO(),
+      })
+      .select("id, company_name")
+      .single();
+    setConverting(null);
+    if (e) return setError(friendlyError(e.message));
+    if (data) {
+      setClientList((list) => [...list, data as ClientRef]);
+      toast(`${item.client_name} agora é cliente.`);
+    }
+  }
+  const [items, setItems] = useState(opportunities);
+  const [selected, setSelected] = useState<Row | null>(null);
+  const [error, setError] = useState("");
+  const [formError, setFormError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+  const [query, setQuery] = useState("");
+  const [owner, setOwner] = useState("");
+  const [lossStage, setLossStage] = useState<Stage>("lead");
+
+  // Novos registros criados pelo botão "Nova oportunidade" chegam via router.refresh().
+  useEffect(() => setItems(opportunities), [opportunities]);
+
+  // Abre direto a oportunidade indicada na URL (?lead=id), ex.: vindo dos follow-ups.
+  const openedFromUrl = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (!openLeadId || openedFromUrl.current === openLeadId) return;
+    const target = opportunities.find((o) => o.id === openLeadId);
+    if (target) {
+      openedFromUrl.current = openLeadId;
+      setFormError("");
+      setFieldErrors({});
+      setLossStage(normalizeStage(target.stage));
+      setSelected(target);
+    }
+  }, [openLeadId, opportunities]);
+
+  // Ao fechar, remove ?lead da URL para que o mesmo link possa reabrir o registro.
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    if (selected || !openLeadId || openedFromUrl.current !== openLeadId) return;
+    openedFromUrl.current = undefined;
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("lead");
+    router.replace(params.size ? `${pathname}?${params}` : pathname, { scroll: false });
+  }, [selected, openLeadId, pathname, router, searchParams]);
+
+  const userName = (id: string | null) => users.find((u) => u.id === id)?.name ?? "—";
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return items.filter((i) => (!q || i.client_name.toLowerCase().includes(q) || (i.next_action ?? "").toLowerCase().includes(q)) && (!owner || i.origin_owner_id === owner || i.closing_user_id === owner));
+  }, [items, query, owner]);
+
+  function open(item: Row) {
+    setFormError("");
+    setFieldErrors({});
+    setLossStage(normalizeStage(item.stage));
+    setSelected(item);
+  }
+
+  // Cartões com gravação em andamento: impedem movimentações duplicadas/concorrentes.
+  const savingIds = useRef(new Set<string>());
+  const [movingIds, setMovingIds] = useState<string[]>([]);
+  const markMoving = (id: string, on: boolean) => {
+    if (on) savingIds.current.add(id);
+    else savingIds.current.delete(id);
+    setMovingIds(Array.from(savingIds.current));
+  };
+
+  async function move(item: Row, stage: Stage) {
+    const from = normalizeStage(item.stage);
+    if (from === stage || savingIds.current.has(item.id)) return;
+    // Perda exige motivo: abre o formulário em vez de mover diretamente.
+    if (stage === "perdido" && !item.loss_reason) {
+      open(item);
+      setLossStage("perdido");
+      return;
+    }
+    setError("");
+    markMoving(item.id, true);
+    // Atualização otimista: o cartão muda de coluna na hora…
+    setItems((c) => c.map((i) => (i.id === item.id ? { ...i, stage, probability: probabilities[stage] } : i)));
+    // …e só é gravado se ainda estiver na etapa que o usuário via (evita sobrescrever
+    // uma mudança feita por outra pessoa/aba enquanto isso).
+    const { data, error: e } = await createClient()
+      .from("opportunities")
+      .update({ stage, probability: probabilities[stage], last_interaction_at: new Date().toISOString() })
+      .eq("id", item.id)
+      .eq("stage", item.stage)
+      .select("*")
+      .maybeSingle();
+    markMoving(item.id, false);
+    if (e || !data) {
+      // Desfaz: a interface nunca fica mostrando uma etapa que não foi salva.
+      setItems((c) => c.map((i) => (i.id === item.id ? item : i)));
+      const message = e ? friendlyError(e.message) : "A oportunidade foi alterada em outro lugar. O funil foi atualizado com os dados atuais.";
+      setError(`Não foi possível mover "${item.client_name}" para ${labels[stage]}. ${message}`);
+      toast(`Não foi possível mover ${item.client_name}.`, "error");
+      if (!e) router.refresh();
+      return;
+    }
+    setItems((c) => c.map((i) => (i.id === item.id ? (data as Row) : i)));
+    toast(`${item.client_name} movido para ${labels[stage]}.`);
+    // Sincroniza indicadores e demais dados do servidor com o valor persistido.
+    router.refresh();
+  }
+
+  // ---- Arrastar e soltar (API nativa do navegador; sem dependências) ----
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dropStage, setDropStage] = useState<Stage | null>(null);
+  const draggingItem = draggingId ? items.find((i) => i.id === draggingId) ?? null : null;
+
+  function onCardDragStart(e: React.DragEvent, item: Row) {
+    e.dataTransfer.setData("text/plain", item.id);
+    e.dataTransfer.effectAllowed = "move";
+    setDraggingId(item.id);
+  }
+  function endDrag() {
+    setDraggingId(null);
+    setDropStage(null);
+  }
+  function onColumnDragOver(e: React.DragEvent, stage: Stage) {
+    if (!draggingItem) return;
+    e.preventDefault();
+    const same = normalizeStage(draggingItem.stage) === stage;
+    e.dataTransfer.dropEffect = same ? "none" : "move";
+    if (dropStage !== stage) setDropStage(stage);
+  }
+  function onColumnDragLeave(e: React.DragEvent, stage: Stage) {
+    if (dropStage === stage && !e.currentTarget.contains(e.relatedTarget as Node | null)) setDropStage(null);
+  }
+  function onColumnDrop(e: React.DragEvent, stage: Stage) {
+    e.preventDefault();
+    const id = e.dataTransfer.getData("text/plain") || draggingId;
+    const item = items.find((i) => i.id === id);
+    endDrag();
+    if (item) void move(item, stage);
+  }
+
+  // ---- Rolagem horizontal do quadro ----
+  const scroller = useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = useState({ left: false, right: false });
+  const updateEdges = () => {
+    const el = scroller.current;
+    if (!el) return;
+    setEdges({ left: el.scrollLeft > 4, right: el.scrollLeft + el.clientWidth < el.scrollWidth - 4 });
+  };
+  useEffect(() => {
+    updateEdges();
+    const el = scroller.current;
+    if (!el) return;
+    const ro = new ResizeObserver(updateEdges);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [filtered.length]);
+  function scrollColumns(direction: 1 | -1) {
+    const el = scroller.current;
+    if (el) el.scrollBy({ left: direction * Math.max(el.clientWidth * 0.8, 260), behavior: "smooth" });
+  }
+  // Durante o arraste, aproximar o cartão das bordas rola o quadro.
+  function onBoardDragOver(e: React.DragEvent) {
+    const el = scroller.current;
+    if (!el || !draggingId) return;
+    const rect = el.getBoundingClientRect();
+    if (e.clientX < rect.left + 80) el.scrollLeft -= 24;
+    else if (e.clientX > rect.right - 80) el.scrollLeft += 24;
+  }
+
+  async function archive(item: Row) {
+    if (!(await confirmDialog({ description: `Arquivar o lead "${item.client_name}"? Ele sai do funil, mas o registro é preservado.`, title: "Arquivar lead", confirmLabel: "Arquivar", tone: "default" }))) return;
+    setError("");
+    const { error: e } = await createClient().from("opportunities").update({ archived_at: new Date().toISOString(), archived_by: currentUserId }).eq("id", item.id);
+    if (e) return setError(friendlyError(e.message));
+    setItems((c) => c.filter((i) => i.id !== item.id));
+    toast("Lead arquivado.");
+  }
+
+  async function remove(item: Row) {
+    if (!(await confirmDialog({ description: `Excluir definitivamente o lead "${item.client_name}"? Esta ação não pode ser desfeita.` }))) return;
+    setError("");
+    const { error: e } = await createClient().from("opportunities").delete().eq("id", item.id);
+    if (e) return setError(friendlyError(e.message));
+    setItems((c) => c.filter((i) => i.id !== item.id));
+    toast("Lead excluído.");
+  }
+
+  async function save(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!selected || saving) return;
+    setFormError("");
+    setFieldErrors({});
+    const f = new FormData(e.currentTarget);
+    const stage = normalizeStage(String(f.get("stage") || "lead"));
+    const clientName = String(f.get("client_name") || "").trim();
+    const lossReason = String(f.get("loss_reason") || "").trim();
+    const errors: Record<string, string> = {};
+    if (!clientName) errors.client_name = "Informe o cliente.";
+    if (stage === "perdido" && !lossReason) errors.loss_reason = "Informe o motivo da perda.";
+    const estimatedValue = Number(f.get("estimated_value") || 0);
+    const probability = Number(f.get("probability") ?? probabilities[stage]);
+    if (!Number.isFinite(estimatedValue) || estimatedValue < 0) errors.estimated_value = "Informe um valor válido.";
+    if (!Number.isFinite(probability) || probability < 0 || probability > 100) errors.probability = "Use um valor entre 0 e 100.";
+    if (Object.keys(errors).length) return setFieldErrors(errors);
+    setSaving(true);
+    const payload = {
+      client_name: clientName,
+      stage,
+      priority: String(f.get("priority") || "media"),
+      channel: String(f.get("channel") || "whatsapp"),
+      // Apenas administradores redistribuem o fechamento (regra também aplicada pelo RLS).
+      closing_user_id: isAdmin ? String(f.get("closing_user_id") || "") || null : selected.closing_user_id,
+      estimated_value: estimatedValue,
+      probability,
+      next_action: String(f.get("next_action") || "").trim() || null,
+      next_followup_at: fromDateTimeLocal(String(f.get("next_followup_at") || "")),
+      loss_reason: stage === "perdido" ? lossReason : null,
+      last_interaction_at: new Date().toISOString(),
+    };
+    const { data, error: e2 } = await createClient().from("opportunities").update(payload).eq("id", selected.id).select("*").single();
+    setSaving(false);
+    if (e2) return setFormError(friendlyError(e2.message));
+    if (data) {
+      setItems((c) => c.map((i) => (i.id === data.id ? (data as Row) : i)));
+      setSelected(null);
+      toast("Oportunidade atualizada.");
+    }
+  }
+
+  const now = Date.now();
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <div className="relative sm:flex-1">
+          <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" />
+          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por cliente ou próxima ação" aria-label="Buscar oportunidades" className={cn(inputClass, "pl-9")} />
+        </div>
+        {isAdmin && users.length > 1 && (
+          <Select value={owner} onChange={(e) => setOwner(e.target.value)} className="sm:w-56" aria-label="Filtrar por responsável">
+            <option value="">Todos os responsáveis</option>
+            {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+          </Select>
+        )}
+      </div>
+      <FormError message={error} />
+
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs text-ink-500">
+          <span className="hidden sm:inline">Arraste os cartões entre as etapas ou use o seletor de cada cartão.</span>
+          <span className="sm:hidden">Deslize para ver todas as etapas · use o seletor para mover.</span>
+        </p>
+        <div className="flex shrink-0 items-center gap-1">
+          <IconButton label="Etapas anteriores" onClick={() => scrollColumns(-1)} disabled={!edges.left} className="border border-ink-200 bg-surface"><ChevronLeft size={16} /></IconButton>
+          <IconButton label="Próximas etapas" onClick={() => scrollColumns(1)} disabled={!edges.right} className="border border-ink-200 bg-surface"><ChevronRight size={16} /></IconButton>
+        </div>
+      </div>
+
+      <div className="relative">
+        {/* Indicam que há mais colunas fora da área visível */}
+        <div aria-hidden className={cn("pointer-events-none absolute inset-y-0 left-0 z-10 w-8 rounded-l-xl bg-gradient-to-r from-canvas to-transparent transition-opacity", edges.left ? "opacity-100" : "opacity-0")} />
+        <div aria-hidden className={cn("pointer-events-none absolute inset-y-0 right-0 z-10 w-8 rounded-r-xl bg-gradient-to-l from-canvas to-transparent transition-opacity", edges.right ? "opacity-100" : "opacity-0")} />
+        <div
+          ref={scroller}
+          onScroll={updateEdges}
+          onDragOver={onBoardDragOver}
+          role="region"
+          aria-label="Funil de vendas — role horizontalmente para ver todas as etapas"
+          tabIndex={0}
+          className="kanban-scroll focus-ring overflow-x-auto overscroll-x-contain rounded-xl pb-3 max-sm:snap-x max-sm:snap-mandatory"
+        >
+          <div className="flex w-max min-w-full gap-3">
+            {stages.map((stage) => {
+              const list = filtered.filter((i) => normalizeStage(i.stage) === stage);
+              const total = list.reduce((sum, i) => sum + Number(i.estimated_value || 0), 0);
+              const isTarget = dropStage === stage && draggingItem && normalizeStage(draggingItem.stage) !== stage;
+              const isSource = draggingItem && normalizeStage(draggingItem.stage) === stage;
+              return (
+                <section
+                  key={stage}
+                  aria-label={`${labels[stage]}: ${list.length} oportunidade(s)`}
+                  data-stage={stage}
+                  onDragOver={(e) => onColumnDragOver(e, stage)}
+                  onDragLeave={(e) => onColumnDragLeave(e, stage)}
+                  onDrop={(e) => onColumnDrop(e, stage)}
+                  className={cn(
+                    "flex max-h-[calc(100dvh-11rem)] min-h-[18rem] w-[min(84vw,280px)] shrink-0 grow basis-[min(84vw,280px)] snap-start flex-col rounded-xl border bg-ink-50 transition-colors sm:w-[256px] sm:basis-[256px]",
+                    isTarget ? "border-primary bg-primary/5 ring-2 ring-primary/40" : "border-ink-200",
+                    draggingItem && !isSource && !isTarget && "border-dashed",
+                  )}
+                >
+                  <div className="shrink-0 px-3 pt-3">
+                    <div className="mb-1 flex items-center justify-between gap-2">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className={cn("h-2 w-2 shrink-0 rounded-full", stageAccent[stage])} />
+                        <h3 className="truncate text-sm font-semibold text-ink-900">{labels[stage]}</h3>
+                      </div>
+                      <span className="shrink-0 rounded-full bg-surface px-2 py-0.5 text-xs font-medium tabular-nums text-ink-600 ring-1 ring-ink-200">{list.length}</span>
+                    </div>
+                    <p className="mb-3 text-xs tabular-nums text-ink-500">{formatMoney(total)}</p>
+                  </div>
+                  <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto px-3 pb-3">
+                    {isTarget && (
+                      <div className="flex items-center justify-center rounded-lg border-2 border-dashed border-primary/60 bg-primary/10 p-3 text-xs font-medium text-primary">
+                        Soltar em {labels[stage]}
+                      </div>
+                    )}
+                    {list.map((item) => {
+                      const overdue = item.next_followup_at && new Date(item.next_followup_at).getTime() < now && !["ganho", "perdido"].includes(normalizeStage(item.stage));
+                      const moving = movingIds.includes(item.id);
+                      return (
+                        <article
+                          key={item.id}
+                          draggable={!moving}
+                          onDragStart={(e) => onCardDragStart(e, item)}
+                          onDragEnd={endDrag}
+                          aria-busy={moving || undefined}
+                          className={cn(
+                            "rounded-lg border border-ink-200 bg-surface p-3 shadow-sm transition-opacity",
+                            moving ? "cursor-progress opacity-60" : "cursor-grab active:cursor-grabbing",
+                            draggingId === item.id && "opacity-40",
+                          )}
+                        >
+                          <button type="button" className="w-full text-left" onClick={() => open(item)}>
+                            <p className="truncate text-sm font-medium text-ink-900">{item.client_name}</p>
+                            <p className="text-sm tabular-nums text-ink-700">{formatMoney(item.estimated_value || 0)}</p>
+                            <p className="mt-1 text-xs text-ink-500">{priorityLabel[item.priority || "media"] ?? item.priority} · {item.probability ?? probabilities[stage]}% · {channelLabel[item.channel || ""] ?? item.channel ?? "—"}</p>
+                            {isAdmin && <p className="mt-0.5 truncate text-xs text-ink-500">{userName(item.origin_owner_id)}</p>}
+                            {item.next_followup_at && (
+                              <p className={cn("mt-1.5 flex items-center gap-1 text-xs", overdue ? "font-medium text-danger" : "text-ink-500")}>
+                                <CalendarClock size={12} /> {formatDateTime(item.next_followup_at)}{overdue ? " · atrasado" : ""}
+                              </p>
+                            )}
+                          </button>
+                          {normalizeStage(item.stage) === "ganho" && (
+                            clientFor(item.client_name) ? (
+                              <Link href={`/clientes/${clientFor(item.client_name)!.id}`} className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-korvix-600 hover:text-korvix-700">Ver ficha do cliente →</Link>
+                            ) : (
+                              <button type="button" onClick={() => convertToClient(item)} disabled={converting === item.id} className="mt-2 inline-flex items-center gap-1 rounded-md bg-success/10 px-2 py-1 text-xs font-medium text-success hover:bg-success/15 disabled:opacity-60">
+                                <UserPlus size={13} /> {converting === item.id ? "Cadastrando..." : "Cadastrar como cliente"}
+                              </button>
+                            )
+                          )}
+                          <div className="mt-2 flex items-center gap-1 border-t border-ink-100 pt-2">
+                            <select aria-label={`Mover ${item.client_name} de etapa`} disabled={moving} className="focus-ring min-w-0 flex-1 rounded-md border border-ink-200 bg-surface px-1.5 py-1 text-xs text-ink-700 disabled:opacity-60" value={normalizeStage(item.stage)} onChange={(e) => move(item, normalizeStage(e.target.value))}>
+                              {stages.map((option) => <option key={option} value={option}>{labels[option]}</option>)}
+                            </select>
+                            <IconButton label="Arquivar" onClick={() => archive(item)} disabled={moving}><Archive size={14} /></IconButton>
+                            {isAdmin && <IconButton label="Excluir definitivamente" tone="danger" onClick={() => remove(item)} disabled={moving}><Trash2 size={14} /></IconButton>}
+                          </div>
+                        </article>
+                      );
+                    })}
+                    {list.length === 0 && !isTarget && <p className="rounded-lg border border-dashed border-ink-300 p-3 text-center text-xs text-ink-500">Nenhuma oportunidade</p>}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      <Modal
+        open={Boolean(selected)}
+        onClose={() => setSelected(null)}
+        title="Editar oportunidade"
+        size="lg"
+        footer={
+          <>
+            <button type="button" onClick={() => setSelected(null)} className={buttonClass("secondary")}>Cancelar</button>
+            <button type="submit" form="edit-opportunity" disabled={saving} className={buttonClass("primary")}>{saving ? "Salvando..." : "Salvar alterações"}</button>
+          </>
+        }
+      >
+        {selected && (
+          <form id="edit-opportunity" key={selected.id} onSubmit={save} className="grid gap-4 md:grid-cols-2">
+            <Field label="Cliente" error={fieldErrors.client_name}><Input name="client_name" defaultValue={selected.client_name} required /></Field>
+            <Field label="Etapa" error={fieldErrors.stage}>
+              <Select name="stage" value={lossStage} onChange={(e) => setLossStage(normalizeStage(e.target.value))}>{stages.map((s) => <option key={s} value={s}>{labels[s]}</option>)}</Select>
+            </Field>
+            <Field label="Prioridade" error={fieldErrors.priority}><Select name="priority" defaultValue={selected.priority || "media"}>{PRIORITIES.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}</Select></Field>
+            <Field label="Responsável pelo fechamento" hint={isAdmin ? undefined : "Somente a administração redistribui leads."} error={fieldErrors.closing_user_id}>
+              <Select name="closing_user_id" defaultValue={selected.closing_user_id || currentUserId} disabled={!isAdmin}>{users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</Select>
+            </Field>
+            <Field label="Canal" error={fieldErrors.channel}>
+              <Select name="channel" defaultValue={selected.channel || "whatsapp"}>
+                {CHANNELS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+                {selected.channel && !channelLabel[selected.channel] && <option value={selected.channel}>{selected.channel}</option>}
+              </Select>
+            </Field>
+            <Field label="Valor estimado (R$)" error={fieldErrors.estimated_value}><Input name="estimated_value" type="number" min="0" step="0.01" defaultValue={selected.estimated_value || 0} /></Field>
+            <Field label="Probabilidade (%)" error={fieldErrors.probability}><Input name="probability" type="number" min="0" max="100" defaultValue={selected.probability ?? probabilities[normalizeStage(selected.stage)]} /></Field>
+            <Field label="Próximo follow-up" error={fieldErrors.next_followup_at}><Input name="next_followup_at" type="datetime-local" defaultValue={toDateTimeLocal(selected.next_followup_at)} /></Field>
+            <Field label="Próxima ação" className="md:col-span-2" error={fieldErrors.next_action}><Input name="next_action" defaultValue={selected.next_action || ""} placeholder="Ex.: enviar proposta revisada" /></Field>
+            {lossStage === "perdido" && (
+              <Field label="Motivo da perda" className="md:col-span-2" error={fieldErrors.loss_reason}><Textarea name="loss_reason" defaultValue={selected.loss_reason || ""} required /></Field>
+            )}
+            <div className="md:col-span-2"><FormError message={formError} /></div>
+          </form>
+        )}
+      </Modal>
+    </div>
+  );
+}
