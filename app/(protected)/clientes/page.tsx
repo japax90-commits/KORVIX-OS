@@ -33,10 +33,10 @@ export default async function ClientesPage({ searchParams }: { searchParams?: { 
   const count = (s: string) => all.filter((c) => c.operational_status === s).length;
   const admin = isKorvixAdmin(profile);
   const columns: Column<(typeof clients)[number]>[] = [
-    { header: "Cliente", cell: (c) => <div className="min-w-0"><Link href={`/clientes/${c.id}`} className="font-medium text-ink-900 hover:text-korvix-700">{c.company_name}</Link><p className="text-xs text-ink-500">{c.contact_name}{c.phone ? ` · ${c.phone}` : ""}</p></div> },
-    { header: "Status", cell: (c) => <StatusBadge status={c.operational_status} /> },
-    { header: "Plano", cell: (c) => c.active_plan_name || "—", hideOnMobile: true },
-    { header: "Valor", cell: (c) => (c.active_contract_value ? formatMoney(c.active_contract_value) : "—"), hideOnMobile: true },
+    { header: "Cliente", sortKey: "cliente", sortValue: (c) => c.company_name, cell: (c) => <div className="min-w-0"><Link href={`/clientes/${c.id}`} className="font-medium text-ink-900 hover:text-korvix-700">{c.company_name}</Link><p className="text-xs text-ink-500">{c.contact_name}{c.phone ? ` · ${c.phone}` : ""}</p></div> },
+    { header: "Status", sortKey: "status", sortValue: (c) => c.operational_status, cell: (c) => <StatusBadge status={c.operational_status} /> },
+    { header: "Plano", sortKey: "plano", sortValue: (c) => c.active_plan_name, cell: (c) => c.active_plan_name || "—", hideOnMobile: true },
+    { header: "Valor", sortKey: "valor", sortValue: (c) => Number(c.active_contract_value ?? 0) || null, cell: (c) => (c.active_contract_value ? formatMoney(c.active_contract_value) : "—"), hideOnMobile: true },
     { header: "Origem / Atendimento", cell: (c) => <span className="text-xs text-ink-500">{owner(c.origin_owner_id)} / {owner(c.account_manager_id)}</span>, hideOnMobile: true },
     { header: "Ações", className: "text-right", cell: (c) => <div className="flex items-center justify-end gap-1"><ClientEditButton client={c} canDelete={admin} /><Link href={`/clientes/${c.id}`} className="inline-flex items-center gap-1 rounded-lg px-2 py-2 text-xs font-medium text-korvix-600 hover:bg-korvix-50">Ficha <ChevronRight size={14} /></Link></div> },
   ];
@@ -60,7 +60,7 @@ export default async function ClientesPage({ searchParams }: { searchParams?: { 
           <button className={buttonClass("secondary")}>Filtrar</button>
           {(q || status) && <Link href="/clientes" className={buttonClass("ghost")}>Limpar</Link>}
         </form>
-        <DataTable columns={columns} rows={clients} emptyLabel={q || status ? "Nenhum cliente encontrado com esses filtros." : "Nenhum cliente cadastrado. Use Novo cliente para começar."} />
+        <DataTable navigation={{ pathname: "/clientes", params: searchParams ?? {} }} columns={columns} rows={clients} emptyLabel={q || status ? "Nenhum cliente encontrado com esses filtros." : "Nenhum cliente cadastrado. Use Novo cliente para começar."} />
       </Card>
     </div>
   );

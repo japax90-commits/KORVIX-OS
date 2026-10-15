@@ -112,7 +112,7 @@ export default async function FinanceiroPage() {
         </div>
       </section>
       <Card>
-        <CardHeader title="Últimos pagamentos" subtitle="10 mais recentes por vencimento" action={<Link href="/financeiro/pagamentos" className="text-sm font-medium text-korvix-600 hover:text-korvix-800">Ver todos</Link>} />
+        <CardHeader title="Últimos pagamentos" subtitle="10 mais recentes por vencimento" action={<Link href="/financeiro/pagamentos" className="text-sm font-medium text-korvix-600 hover:text-korvix-700">Ver todos</Link>} />
         <DataTable columns={columns} rows={rows.slice(0, 10)} emptyLabel="Nenhum pagamento registrado." />
       </Card>
     </div>

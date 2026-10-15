@@ -259,7 +259,7 @@ export function CrmClientV2({ opportunities, users, currentUserId, isAdmin = fal
                         </button>
                         {normalizeStage(item.stage) === "ganho" && (
                           clientFor(item.client_name) ? (
-                            <Link href={`/clientes/${clientFor(item.client_name)!.id}`} className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-korvix-600 hover:text-korvix-800">Ver ficha do cliente →</Link>
+                            <Link href={`/clientes/${clientFor(item.client_name)!.id}`} className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-korvix-600 hover:text-korvix-700">Ver ficha do cliente →</Link>
                           ) : (
                             <button type="button" onClick={() => convertToClient(item)} disabled={converting === item.id} className="mt-2 inline-flex items-center gap-1 rounded-md bg-success/10 px-2 py-1 text-xs font-medium text-success hover:bg-success/15 disabled:opacity-60">
                               <UserPlus size={13} /> {converting === item.id ? "Cadastrando..." : "Cadastrar como cliente"}

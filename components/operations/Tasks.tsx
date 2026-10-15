@@ -65,7 +65,7 @@ export function CreateTaskButton({ compact = false, ...props }: Shared & { compa
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button onClick={() => setOpen(true)} className={compact ? buttonClass("secondary", "px-3 py-1.5 text-xs") : buttonClass("primary")}><Plus size={compact ? 14 : 16} /> Nova tarefa</button>
+      <button onClick={() => setOpen(true)} className={compact ? buttonClass("secondary", undefined, "sm") : buttonClass("primary")}><Plus size={compact ? 14 : 16} /> Nova tarefa</button>
       {open && <TaskModal open onClose={() => setOpen(false)} {...props} />}
     </>
   );

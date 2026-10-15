@@ -60,7 +60,7 @@ export default function ForgotPasswordPage() {
           </form>
         )}
 
-        <Link href="/login" className="mt-7 flex items-center justify-center gap-2 text-sm font-medium text-korvix-700 hover:text-korvix-800"><ArrowLeft size={15}/> Voltar para o login</Link>
+        <Link href="/login" className="mt-7 flex items-center justify-center gap-2 text-sm font-medium text-korvix-700 hover:text-korvix-700"><ArrowLeft size={15}/> Voltar para o login</Link>
         <p className="mt-7 flex items-center justify-center gap-1.5 text-xs text-ink-500"><ShieldCheck size={13}/> Recuperação protegida pelo Supabase Auth.</p>
       </div>
     </div>

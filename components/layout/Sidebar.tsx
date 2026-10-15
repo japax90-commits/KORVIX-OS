@@ -37,7 +37,7 @@ function NavLink({ item, active, onNavigate, collapsible }: { item: NavItem; act
 }
 
 function SectionLabel({ children, collapsible }: { children: React.ReactNode; collapsible?: boolean }) {
-  return <p className={cn("px-3 pb-1.5 pt-4 text-[10px] font-semibold uppercase tracking-wider text-korvix-300/50 first:pt-2", collapsible && `[html[data-sidebar=collapsed]_&]:sr-only`)}>{children}</p>;
+  return <p className={cn("px-3 pb-1.5 pt-4 text-[10px] font-semibold uppercase tracking-wider text-korvix-300/80 first:pt-2", collapsible && `[html[data-sidebar=collapsed]_&]:sr-only`)}>{children}</p>;
 }
 
 function SidebarContent({ allowedModules, isAdmin, onNavigate, collapsible }: SidebarProps) {

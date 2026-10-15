@@ -26,7 +26,7 @@ export default async function CaixaPage() {
   const canDelete = isKorvixAdmin(profile);
   return (
     <div className="space-y-6">
-      <PageHeader title="Caixa" description="Entradas e saídas categorizadas. Pagamentos confirmados e comissões entram automaticamente." actions={<CreateCashMovementButton userId={user.id} />} />
+      <PageHeader breadcrumbs={[{ label: "Financeiro", href: "/financeiro" }, { label: "Caixa" }]} title="Caixa" description="Entradas e saídas categorizadas. Pagamentos confirmados e comissões entram automaticamente." actions={<CreateCashMovementButton userId={user.id} />} />
       <FinanceSubnav active="/financeiro/caixa" />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
         <StatCard label="Saldo em caixa" value={formatMoney(calculateCashBalance(rows))} />

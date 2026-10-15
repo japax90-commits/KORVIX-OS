@@ -25,7 +25,7 @@ export default async function EquipePage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Equipe e Permissões" description="Usuários cadastrados e os módulos que cada um acessa." />
-      <div className="flex gap-3 rounded-xl border border-korvix-100 bg-korvix-50 p-4 text-sm text-korvix-900">
+      <div className="flex gap-3 rounded-xl border border-korvix-100 bg-korvix-50 p-4 text-sm text-ink-900">
         <Info size={16} className="mt-0.5 shrink-0 text-korvix-600" />
         <p>
           Os acessos são definidos pelo papel e aplicados no menu, nas rotas e no banco (RLS). Administração completa: apenas a conta principal.

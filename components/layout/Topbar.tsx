@@ -104,14 +104,14 @@ export function Topbar({
           <div className="relative" ref={notifRef}>
             <button onClick={() => setNotifOpen((v) => !v)} className="focus-ring relative rounded-lg p-2 text-ink-700 hover:bg-ink-100" aria-label={`Notificações (${unread} não lidas)`} aria-expanded={notifOpen}>
               <Bell size={18} />
-              {unread > 0 && <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[9px] font-semibold text-white">{unread > 9 ? "9+" : unread}</span>}
+              {unread > 0 && <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[9px] font-semibold text-white dark:text-korvix-950">{unread > 9 ? "9+" : unread}</span>}
             </button>
             {notifOpen && (
               <div className="fixed inset-x-3 top-16 z-40 rounded-xl border border-ink-200 bg-surface shadow-panel sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[340px]">
                 <div className="flex items-center justify-between border-b border-ink-100 px-4 py-3">
                   <p className="text-sm font-semibold text-ink-900">Notificações</p>
                   {unread > 0 ? (
-                    <button onClick={markAllRead} className="text-xs font-medium text-korvix-600 hover:text-korvix-800">Marcar todas como lidas</button>
+                    <button onClick={markAllRead} className="text-xs font-medium text-korvix-600 hover:text-korvix-700">Marcar todas como lidas</button>
                   ) : (
                     <span className="text-xs text-ink-500">Tudo em dia</span>
                   )}
@@ -124,7 +124,7 @@ export function Topbar({
                         <div className="min-w-0">
                           <p className="text-[13px] font-medium text-ink-900">{n.title}</p>
                           <p className="mt-0.5 text-xs text-ink-500">{n.body}</p>
-                          <p className="mt-1 text-[11px] text-ink-400">{formatDateTime(n.created_at)}</p>
+                          <p className="mt-1 text-[11px] text-ink-500">{formatDateTime(n.created_at)}</p>
                         </div>
                       </div>
                     </div>
@@ -137,7 +137,7 @@ export function Topbar({
 
           <div className="relative" ref={userRef}>
             <button onClick={() => setUserOpen((v) => !v)} className="focus-ring ml-1 flex items-center gap-2 rounded-lg py-1 pl-1 pr-1 hover:bg-ink-100 sm:pr-2" aria-label="Menu do usuário" aria-expanded={userOpen}>
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-korvix-900 text-xs font-semibold text-korvix-200">{user.initials}</span>
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-korvix-900 text-xs font-semibold text-korvix-200 ring-1 ring-ink-200">{user.initials}</span>
               <span className="hidden max-w-[160px] text-left leading-tight sm:block">
                 <span className="block truncate text-[13px] font-medium text-ink-900">{user.name}</span>
                 <span className="block text-[11px] text-ink-500">{user.roleLabel}</span>

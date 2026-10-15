@@ -14,7 +14,7 @@ import { requireModule } from "@/lib/auth/server";
 
 const frequencyLabel = Object.fromEntries(FREQUENCIES.map((f) => [f.value, f.label]));
 
-export default async function ContratosPage() {
+export default async function ContratosPage({ searchParams = {} }: { searchParams?: Record<string, string | undefined> }) {
   await requireModule("financeiro");
   const s = await createClient();
   const { data: { user } } = await s.auth.getUser();
@@ -28,18 +28,18 @@ export default async function ContratosPage() {
   const rows = (contracts ?? []).map((c) => ({ ...c, value: Number(c.value), next_billing_date: c.next_billing_date ?? null }));
   const canDelete = isKorvixAdmin(profile);
   const columns: Column<(typeof rows)[number]>[] = [
-    { header: "Cliente", cell: (c) => <div><p className="font-medium text-ink-900">{c.client_name}</p><p className="text-xs text-ink-500">{c.plan_name}</p></div> },
-    { header: "Valor", cell: (c) => formatMoney(c.value) },
+    { header: "Cliente", sortKey: "cliente", sortValue: (c) => c.client_name, cell: (c) => <div><p className="font-medium text-ink-900">{c.client_name}</p><p className="text-xs text-ink-500">{c.plan_name}</p></div> },
+    { header: "Valor", sortKey: "valor", sortValue: (c) => c.value, cell: (c) => formatMoney(c.value) },
     { header: "Frequência", cell: (c) => frequencyLabel[c.frequency] ?? c.frequency, hideOnMobile: true },
-    { header: "Início", cell: (c) => formatDate(c.start_date), hideOnMobile: true },
-    { header: "Próxima cobrança", cell: (c) => formatDate(c.next_billing_date), hideOnMobile: true },
-    { header: "Status", cell: (c) => <StatusBadge status={c.status} /> },
+    { header: "Início", sortKey: "inicio", sortValue: (c) => c.start_date, cell: (c) => formatDate(c.start_date), hideOnMobile: true },
+    { header: "Próxima cobrança", sortKey: "cobranca", sortValue: (c) => c.next_billing_date, cell: (c) => formatDate(c.next_billing_date), hideOnMobile: true },
+    { header: "Status", sortKey: "status", sortValue: (c) => c.status, cell: (c) => <StatusBadge status={c.status} /> },
     { header: "Ações", className: "text-right", cell: (c) => <div className="flex justify-end"><ContractRowActions clients={clients ?? []} contract={c} canDelete={canDelete} /></div> },
   ];
   const active = rows.filter((c) => c.status === "ativo");
   return (
     <div className="space-y-6">
-      <PageHeader title="Contratos" description="Contratos reais e base da recorrência." actions={<CreateContractButton clients={clients ?? []} />} />
+      <PageHeader breadcrumbs={[{ label: "Financeiro", href: "/financeiro" }, { label: "Contratos" }]} title="Contratos" description="Contratos reais e base da recorrência." actions={<CreateContractButton clients={clients ?? []} />} />
       <FinanceSubnav active="/financeiro/contratos" />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
         <StatCard label="Contratos ativos" value={String(active.length)} />
@@ -48,7 +48,7 @@ export default async function ContratosPage() {
       </div>
       <Card>
         <CardHeader title="Contratos" subtitle="Planos oficiais: Essencial, Intermediário e Completo." />
-        <DataTable columns={columns} rows={rows} emptyLabel="Nenhum contrato cadastrado." />
+        <DataTable navigation={{ pathname: "/financeiro/contratos", params: searchParams }} columns={columns} rows={rows} emptyLabel="Nenhum contrato cadastrado." />
       </Card>
     </div>
   );

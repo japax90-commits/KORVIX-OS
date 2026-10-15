@@ -43,10 +43,10 @@ export default async function TarefasPage({ searchParams }: { searchParams?: { f
   const rows = all.filter((t) => (filter === "todas" ? true : filter === "concluida" ? t.status === "concluida" : filter === "atrasadas" ? late(t) : OPEN.includes(t.status)));
   const today = todayISO();
   const columns: Column<(typeof rows)[number]>[] = [
-    { header: "Tarefa", cell: (t) => <div className="min-w-0 max-w-[340px] whitespace-normal"><p className={cn("font-medium text-ink-900", t.status === "concluida" && "text-ink-500 line-through")}>{t.title}</p><p className="text-xs text-ink-500">{entityLabel[t.related_entity_type] ?? t.related_entity_type}{t.related_entity_label ? ` · ${t.related_entity_label}` : ""}</p></div> },
-    { header: "Responsável", cell: (t) => t.assigned_to_name, hideOnMobile: true },
+    { header: "Tarefa", sortKey: "tarefa", sortValue: (t) => t.title, cell: (t) => <div className="min-w-0 max-w-[340px] whitespace-normal"><p className={cn("font-medium text-ink-900", t.status === "concluida" && "text-ink-500 line-through")}>{t.title}</p><p className="text-xs text-ink-500">{entityLabel[t.related_entity_type] ?? t.related_entity_type}{t.related_entity_label ? ` · ${t.related_entity_label}` : ""}</p></div> },
+    { header: "Responsável", sortKey: "resp", sortValue: (t) => t.assigned_to_name, cell: (t) => t.assigned_to_name, hideOnMobile: true },
     { header: "Prioridade", cell: (t) => <Badge tone={t.priority === "urgente" ? "danger" : t.priority === "alta" ? "warning" : "neutral"}>{priorityLabel[t.priority] ?? t.priority}</Badge>, hideOnMobile: true },
-    { header: "Prazo", cell: (t) => <span className={cn(late(t) && "font-medium text-danger", t.due_date === today && OPEN.includes(t.status) && "font-medium text-warning")}>{t.due_date === today ? "Hoje" : formatDate(t.due_date)}</span> },
+    { header: "Prazo", sortKey: "prazo", sortValue: (t) => t.due_date, cell: (t) => <span className={cn(late(t) && "font-medium text-danger", t.due_date === today && OPEN.includes(t.status) && "font-medium text-warning")}>{t.due_date === today ? "Hoje" : formatDate(t.due_date)}</span> },
     { header: "Status", cell: (t) => <StatusBadge status={t.status} />, hideOnMobile: true },
     { header: "Ações", className: "text-right", cell: (t) => <div className="flex justify-end"><TaskActions task={t} {...shared} /></div> },
   ];
@@ -66,7 +66,7 @@ export default async function TarefasPage({ searchParams }: { searchParams?: { f
             <Link key={f.value} href={f.value ? `/tarefas?filtro=${f.value}` : "/tarefas"} className={cn("whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium", filter === f.value ? "bg-primary text-primary-fg" : "text-ink-600 hover:bg-ink-100")}>{f.label}</Link>
           ))}
         </div>
-        <DataTable columns={columns} rows={rows} emptyLabel={filter ? "Nenhuma tarefa neste filtro." : "Nenhuma tarefa aberta. Use Nova tarefa para começar."} />
+        <DataTable navigation={{ pathname: "/tarefas", params: searchParams ?? {} }} columns={columns} rows={rows} emptyLabel={filter ? "Nenhuma tarefa neste filtro." : "Nenhuma tarefa aberta. Use Nova tarefa para começar."} />
       </Card>
     </div>
   );

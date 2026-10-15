@@ -41,17 +41,17 @@ export default async function PagamentosPage({ searchParams }: { searchParams?: 
   const rows = all.filter((p) => !filter || (filter === "abertos" ? ["pendente", "atrasado"].includes(p.effective) : p.effective === filter));
   const sum = (list: typeof all) => list.reduce((acc, p) => acc + p.amount, 0);
   const columns: Column<(typeof rows)[number]>[] = [
-    { header: "Cliente", cell: (p) => <div><p className="font-medium">{p.client_name}</p><p className="text-xs text-ink-500 sm:hidden">{formatDate(p.due_date)}</p></div> },
+    { header: "Cliente", sortKey: "cliente", sortValue: (p) => p.client_name, cell: (p) => <div><p className="font-medium">{p.client_name}</p><p className="text-xs text-ink-500 sm:hidden">{formatDate(p.due_date)}</p></div> },
     { header: "Tipo", cell: (p) => typeLabel[p.type] ?? p.type, hideOnMobile: true },
     { header: "Método", cell: (p) => methodLabel[p.method] ?? p.method, hideOnMobile: true },
-    { header: "Valor", cell: (p) => formatMoney(p.amount) },
-    { header: "Vencimento", cell: (p) => formatDate(p.due_date), hideOnMobile: true },
-    { header: "Status", cell: (p) => <StatusBadge status={p.effective} /> },
+    { header: "Valor", sortKey: "valor", sortValue: (p) => p.amount, cell: (p) => formatMoney(p.amount) },
+    { header: "Vencimento", sortKey: "vencimento", sortValue: (p) => p.due_date, cell: (p) => formatDate(p.due_date), hideOnMobile: true },
+    { header: "Status", sortKey: "status", sortValue: (p) => p.effective, cell: (p) => <StatusBadge status={p.effective} /> },
     { header: "Ações", className: "text-right", cell: (p) => <div className="flex items-center justify-end gap-1">{p.status === "pendente" || p.status === "atrasado" ? <ConfirmPaymentButton id={p.id} /> : null}<PaymentEditButton payment={{ ...p, paid_at: p.paid_at ?? null }} canDelete={canDelete} /></div> },
   ];
   return (
     <div className="space-y-6">
-      <PageHeader title="Pagamentos" description="Cobranças, confirmações e sincronização automática de caixa e comissões." actions={<CreatePaymentButton clients={clients ?? []} />} />
+      <PageHeader breadcrumbs={[{ label: "Financeiro", href: "/financeiro" }, { label: "Pagamentos" }]} title="Pagamentos" description="Cobranças, confirmações e sincronização automática de caixa e comissões." actions={<CreatePaymentButton clients={clients ?? []} />} />
       <FinanceSubnav active="/financeiro/pagamentos" />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label="Recebido" value={formatMoney(sum(all.filter((p) => p.effective === "pago")))} />
@@ -68,7 +68,7 @@ export default async function PagamentosPage({ searchParams }: { searchParams?: 
             </Link>
           ))}
         </div>
-        <DataTable columns={columns} rows={rows} emptyLabel={filter ? "Nenhum pagamento neste filtro." : "Nenhum pagamento cadastrado. Use Registrar pagamento."} />
+        <DataTable navigation={{ pathname: "/financeiro/pagamentos", params: searchParams ?? {} }} columns={columns} rows={rows} emptyLabel={filter ? "Nenhum pagamento neste filtro." : "Nenhum pagamento cadastrado. Use Registrar pagamento."} />
       </Card>
     </div>
   );

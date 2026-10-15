@@ -74,7 +74,7 @@ export default async function CrmPage({ searchParams = {} }: { searchParams?: Se
         <StatCard label="Conversão" value={`${metrics.conversion.toFixed(1)}%`} icon={Target} helper={`${metrics.won} ganha(s) · ${metrics.lost} perdida(s)`} />
       </div>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-3">
         <Card className="xl:col-span-2">
           <CardHeader icon={<CalendarClock size={16} />} title="Próximos contatos" subtitle="Follow-ups de oportunidades abertas: atrasados, hoje e próximos 7 dias" />
           <CardBody className="!p-0">

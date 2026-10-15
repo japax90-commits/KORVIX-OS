@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ShieldCheck, ArrowRight } from "lucide-react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { ThemeToggle } from "@/components/layout/ThemeToggle";
 
 export default function LoginPage({ searchParams }: { searchParams?: { error?: string; message?: string } }) {
   async function signIn(formData: FormData) {
@@ -25,7 +26,8 @@ export default function LoginPage({ searchParams }: { searchParams?: { error?: s
         <div className="relative flex items-center gap-2 text-xs text-korvix-300"><ShieldCheck size={14} /><span>Acesso restrito à equipe interna da Korvix Digital</span></div>
       </div>
 
-      <div className="flex flex-1 items-center justify-center bg-surface px-6 py-12 sm:px-10">
+      <div className="relative flex flex-1 items-center justify-center bg-surface px-6 py-12 sm:px-10">
+        <ThemeToggle className="absolute right-4 top-4" />
         <div className="w-full max-w-sm">
           <div className="mb-8 flex items-center gap-2.5 lg:hidden"><div className="flex h-9 w-9 items-center justify-center rounded-lg bg-korvix-900"><span className="text-sm font-bold text-korvix-200">K</span></div><span className="text-[15px] font-semibold tracking-tight text-ink-900">KORVIX <span className="text-korvix-600">OS</span></span></div>
           <h2 className="text-2xl font-semibold tracking-tight text-ink-900">Entrar</h2><p className="mt-1.5 text-sm text-ink-500">Use suas credenciais internas da Korvix Digital.</p>

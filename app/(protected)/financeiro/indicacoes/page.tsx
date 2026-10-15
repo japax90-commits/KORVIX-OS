@@ -8,7 +8,7 @@ import { CreateReferralButton, ReferralActions } from "@/components/operations/R
 import { formatDate, formatMoney } from "@/lib/format";
 import { requireModule } from "@/lib/auth/server";
 
-export default async function IndicacoesPage() {
+export default async function IndicacoesPage({ searchParams = {} }: { searchParams?: Record<string, string | undefined> }) {
   await requireModule("financeiro");
   const s = await createClient();
   const { data: { user } } = await s.auth.getUser();
@@ -21,20 +21,20 @@ export default async function IndicacoesPage() {
   const rows = data ?? [];
   const canDelete = isKorvixAdmin(profile);
   const columns: Column<(typeof rows)[number]>[] = [
-    { header: "Cliente", cell: (r) => <span className="font-medium">{r.client_name}</span> },
-    { header: "Indicador", cell: (r) => r.referrer_name },
+    { header: "Cliente", sortKey: "cliente", sortValue: (r) => r.client_name, cell: (r) => <span className="font-medium">{r.client_name}</span> },
+    { header: "Indicador", sortKey: "indicador", sortValue: (r) => r.referrer_name, cell: (r) => r.referrer_name },
     { header: "Valor", cell: (r) => (r.commission_type === "fixo" ? formatMoney(r.commission_value) : `${r.commission_value}%`) },
     { header: "Negociado por", cell: (r) => r.negotiated_by, hideOnMobile: true },
-    { header: "Data", cell: (r) => formatDate(r.created_at), hideOnMobile: true },
+    { header: "Data", sortKey: "data", sortValue: (r) => r.created_at, cell: (r) => formatDate(r.created_at), hideOnMobile: true },
     { header: "Status", cell: (r) => <ReferralActions id={r.id} status={r.status} canDelete={canDelete} /> },
   ];
   return (
     <div className="space-y-6">
-      <PageHeader title="Indicações" description="Comissões de indicação negociadas caso a caso." actions={<CreateReferralButton userName={profile?.name ?? user.email ?? "Usuário"} />} />
+      <PageHeader breadcrumbs={[{ label: "Financeiro", href: "/financeiro" }, { label: "Indicações" }]} title="Indicações" description="Comissões de indicação negociadas caso a caso." actions={<CreateReferralButton userName={profile?.name ?? user.email ?? "Usuário"} />} />
       <FinanceSubnav active="/financeiro/indicacoes" />
       <Card>
         <CardHeader title="Comissões de indicação" subtitle="Altere o status diretamente na tabela." />
-        <DataTable columns={columns} rows={rows} emptyLabel="Nenhuma indicação registrada." />
+        <DataTable navigation={{ pathname: "/financeiro/indicacoes", params: searchParams }} columns={columns} rows={rows} emptyLabel="Nenhuma indicação registrada." />
       </Card>
     </div>
   );

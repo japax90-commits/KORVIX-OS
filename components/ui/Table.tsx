@@ -78,7 +78,7 @@ export function DataTable<T extends { id: string }>({
                     <dd key={col.header} className="col-span-2 flex justify-end border-t border-ink-100 pt-2">{col.cell(row)}</dd>
                   ) : (
                     <div key={col.header} className="min-w-0">
-                      <dt className="text-[11px] font-medium uppercase tracking-wide text-ink-400">{col.header}</dt>
+                      <dt className="text-[11px] font-medium uppercase tracking-wide text-ink-500">{col.header}</dt>
                       <dd className="mt-0.5 break-words text-sm text-ink-900">{col.cell(row)}</dd>
                     </div>
                   ),

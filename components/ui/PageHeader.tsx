@@ -1,9 +1,26 @@
+import Link from "next/link";
+import { ChevronRight } from "lucide-react";
+
 /** Cabeçalho padrão de página: título + descrição à esquerda, ações à direita (empilha no celular). */
-export function PageHeader({ title, description, actions }: { title: string; description?: string; actions?: React.ReactNode }) {
+export type Crumb = { label: string; href?: string };
+
+export function PageHeader({ title, description, actions, breadcrumbs }: { title: string; description?: string; actions?: React.ReactNode; breadcrumbs?: Crumb[] }) {
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div className="min-w-0">
-        <h2 className="text-xl font-semibold tracking-tight text-ink-900">{title}</h2>
+        {breadcrumbs && breadcrumbs.length > 0 && (
+          <nav aria-label="Você está em" className="mb-1.5">
+            <ol className="flex flex-wrap items-center gap-1 text-xs text-ink-500">
+              {breadcrumbs.map((c, i) => (
+                <li key={c.label} className="flex items-center gap-1">
+                  {i > 0 && <ChevronRight size={12} className="text-ink-400" aria-hidden />}
+                  {c.href ? <Link href={c.href} className="hover:text-ink-900 hover:underline">{c.label}</Link> : <span aria-current="page" className="text-ink-700">{c.label}</span>}
+                </li>
+              ))}
+            </ol>
+          </nav>
+        )}
+        <h2 className="break-words text-xl font-semibold tracking-tight text-ink-900 sm:text-[22px]">{title}</h2>
         {description && <p className="mt-0.5 text-sm text-ink-500">{description}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}

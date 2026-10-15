@@ -103,7 +103,7 @@ export default async function DashboardPage() {
         </Card>
       </div>
       <Card>
-        <CardHeader title="Últimas oportunidades" action={<Link href="/crm" className="text-sm font-medium text-korvix-600 hover:text-korvix-800">Abrir CRM</Link>} />
+        <CardHeader title="Últimas oportunidades" action={<Link href="/crm" className="text-sm font-medium text-korvix-600 hover:text-korvix-700">Abrir CRM</Link>} />
         <CardBody className="!p-0">
           <ul className="divide-y divide-ink-100">
             {opportunities.slice(0, 8).map((x) => (

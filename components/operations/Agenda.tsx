@@ -92,7 +92,7 @@ export function CreateAgendaButton({ compact = false, ...props }: { userId: stri
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button onClick={() => setOpen(true)} className={compact ? buttonClass("secondary", "px-3 py-1.5 text-xs") : buttonClass("primary")}><Plus size={compact ? 14 : 16} /> Novo evento</button>
+      <button onClick={() => setOpen(true)} className={compact ? buttonClass("secondary", undefined, "sm") : buttonClass("primary")}><Plus size={compact ? 14 : 16} /> Novo evento</button>
       {open && <EventModal open onClose={() => setOpen(false)} {...props} />}
     </>
   );
@@ -170,7 +170,7 @@ export function AgendaView({ events, userId, userName, users, isAdmin }: { event
         </div>
         <div className="flex items-center gap-2">
           <IconButton label="Período anterior" onClick={() => shift(-1)} className="border border-ink-300 bg-surface"><ChevronLeft size={16} /></IconButton>
-          <button type="button" onClick={() => setAnchor(todayISO())} className={buttonClass("secondary", "px-3 py-1.5 text-xs")}>Hoje</button>
+          <button type="button" onClick={() => setAnchor(todayISO())} className={buttonClass("secondary", undefined, "sm")}>Hoje</button>
           <IconButton label="Próximo período" onClick={() => shift(1)} className="border border-ink-300 bg-surface"><ChevronRight size={16} /></IconButton>
           <span className="ml-1 text-sm font-medium capitalize text-ink-900">{range.label}</span>
         </div>
@@ -185,7 +185,7 @@ export function AgendaView({ events, userId, userName, users, isAdmin }: { event
                 const Icon = TYPES.find((t) => t.value === e.type)?.icon ?? Calendar;
                 return (
                   <li key={e.id} className="flex flex-wrap items-center gap-3 px-5 py-3.5 sm:flex-nowrap sm:gap-4">
-                    <div className="w-12 shrink-0 text-xs tabular-nums text-ink-500">{formatTime(e.start_at)}{e.end_at ? <span className="block text-ink-400">{formatTime(e.end_at)}</span> : null}</div>
+                    <div className="w-12 shrink-0 text-xs tabular-nums text-ink-500">{formatTime(e.start_at)}{e.end_at ? <span className="block text-ink-500">{formatTime(e.end_at)}</span> : null}</div>
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-korvix-50 text-korvix-600"><Icon size={15} /></div>
                     <div className="min-w-0 flex-1">
                       <p className={cn("truncate text-sm font-medium text-ink-900", e.status === "cancelado" && "line-through opacity-60")}>{e.title}</p>

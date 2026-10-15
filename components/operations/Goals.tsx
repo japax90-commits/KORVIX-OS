@@ -61,7 +61,7 @@ export function CreateGoalButton({ users }: { users: User[] }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button onClick={() => setOpen(true)} className={buttonClass("secondary", "px-3 py-1.5 text-xs")}><Plus size={14} /> Nova meta</button>
+      <button onClick={() => setOpen(true)} className={buttonClass("secondary", undefined, "sm")}><Plus size={14} /> Nova meta</button>
       {open && <GoalModal open onClose={() => setOpen(false)} users={users} />}
     </>
   );
