@@ -1,10 +1,11 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Archive, CalendarClock, Search, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { Archive, CalendarClock, Search, Trash2, UserPlus } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { friendlyError } from "@/lib/hooks/useAction";
-import { formatDateTime, formatMoney, fromDateTimeLocal, toDateTimeLocal } from "@/lib/format";
+import { formatDateTime, formatMoney, fromDateTimeLocal, toDateTimeLocal, todayISO } from "@/lib/format";
 import { Modal } from "@/components/ui/Modal";
 import { Field, FormError, IconButton, Input, Select, Textarea, buttonClass, inputClass } from "@/components/ui/Form";
 
@@ -41,7 +42,37 @@ function normalizeStage(v: string): Stage {
   return (stages as readonly string[]).includes(v) ? (v as Stage) : "lead";
 }
 
-export function CrmClientV2({ opportunities, users, currentUserId, isAdmin = false }: { opportunities: Row[]; users: User[]; currentUserId: string; isAdmin?: boolean }) {
+type ClientRef = { id: string; company_name: string };
+const normalizeName = (name: string) => name.trim().toLowerCase();
+
+export function CrmClientV2({ opportunities, users, currentUserId, isAdmin = false, clients = [] }: { opportunities: Row[]; users: User[]; currentUserId: string; isAdmin?: boolean; clients?: ClientRef[] }) {
+  const [clientList, setClientList] = useState(clients);
+  const [converting, setConverting] = useState<string | null>(null);
+  useEffect(() => setClientList(clients), [clients]);
+  const clientFor = (name: string) => clientList.find((c) => normalizeName(c.company_name) === normalizeName(name));
+
+  // Integração CRM → Clientes: um lead ganho vira cliente (sem duplicar pelo nome).
+  async function convertToClient(item: Row) {
+    if (converting || clientFor(item.client_name)) return;
+    setConverting(item.id);
+    setError("");
+    const { data, error: e } = await createClient()
+      .from("clients")
+      .insert({
+        company_name: item.client_name.trim(),
+        contact_name: item.client_name.trim(),
+        phone: "",
+        origin_owner_id: item.origin_owner_id,
+        account_manager_id: item.closing_user_id ?? item.origin_owner_id,
+        operational_status: "onboarding",
+        entry_date: todayISO(),
+      })
+      .select("id, company_name")
+      .single();
+    setConverting(null);
+    if (e) return setError(friendlyError(e.message));
+    if (data) setClientList((list) => [...list, data as ClientRef]);
+  }
   const [items, setItems] = useState(opportunities);
   const [selected, setSelected] = useState<Row | null>(null);
   const [error, setError] = useState("");
@@ -192,6 +223,15 @@ export function CrmClientV2({ opportunities, users, currentUserId, isAdmin = fal
                             </p>
                           )}
                         </button>
+                        {normalizeStage(item.stage) === "ganho" && (
+                          clientFor(item.client_name) ? (
+                            <Link href={`/clientes/${clientFor(item.client_name)!.id}`} className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-korvix-600 hover:text-korvix-800">Ver ficha do cliente →</Link>
+                          ) : (
+                            <button type="button" onClick={() => convertToClient(item)} disabled={converting === item.id} className="mt-2 inline-flex items-center gap-1 rounded-md bg-success/10 px-2 py-1 text-xs font-medium text-success hover:bg-success/15 disabled:opacity-60">
+                              <UserPlus size={13} /> {converting === item.id ? "Cadastrando..." : "Cadastrar como cliente"}
+                            </button>
+                          )
+                        )}
                         <div className="mt-2 flex items-center gap-1 border-t border-ink-100 pt-2">
                           <select aria-label={`Mover ${item.client_name} de etapa`} className="focus-ring min-w-0 flex-1 rounded-md border border-ink-200 bg-white px-1.5 py-1 text-xs text-ink-700" value={normalizeStage(item.stage)} onChange={(e) => move(item, normalizeStage(e.target.value))}>
                             {stages.map((option) => <option key={option} value={option}>{labels[option]}</option>)}
