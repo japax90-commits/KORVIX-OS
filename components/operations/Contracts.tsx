@@ -8,23 +8,12 @@ import { todayISO } from "@/lib/format";
 import { KORVIX_PLANS, type KorvixPlanName } from "@/lib/business/plans";
 import { Modal } from "@/components/ui/Modal";
 import { Field, FormError, IconButton, Input, Select, buttonClass } from "@/components/ui/Form";
+import { FREQUENCIES, CONTRACT_STATUSES } from "@/lib/options";
 
 export type ContractRecord = { id: string; client_name: string; plan_name: string; value: number; frequency: string; status: string; start_date: string; next_billing_date: string | null };
 type Client = { id: string; company_name: string };
 
 const plans = Object.values(KORVIX_PLANS);
-export const FREQUENCIES = [
-  { value: "mensal", label: "Mensal" },
-  { value: "trimestral", label: "Trimestral" },
-  { value: "semestral", label: "Semestral" },
-  { value: "anual", label: "Anual" },
-];
-export const CONTRACT_STATUSES = [
-  { value: "ativo", label: "Ativo" },
-  { value: "pausado", label: "Pausado" },
-  { value: "encerrado", label: "Encerrado" },
-  { value: "cancelado", label: "Cancelado" },
-];
 
 function ContractModal({ open, onClose, clients, contract }: { open: boolean; onClose: () => void; clients: Client[]; contract?: ContractRecord }) {
   const { run, busy, error, setError } = useAction();

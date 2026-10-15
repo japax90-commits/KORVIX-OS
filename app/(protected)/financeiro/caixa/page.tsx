@@ -4,9 +4,10 @@ import { PageHeader, ErrorState } from "@/components/ui/PageHeader";
 import { FinanceSubnav } from "../FinanceSubnav";
 import { createClient } from "@/lib/supabase/server";
 import { isKorvixAdmin } from "@/lib/auth/permissions";
-import { CreateCashMovementButton, CashMovementActions, CASH_CATEGORIES } from "@/components/operations/Cash";
+import { CreateCashMovementButton, CashMovementActions } from "@/components/operations/Cash";
 import { calculateCashBalance, calculateCashEntries, calculateCashExits } from "@/lib/finance/calculations";
 import { formatDate, formatMoney } from "@/lib/format";
+import { CASH_CATEGORIES } from "@/lib/options";
 
 const categoryLabel = Object.fromEntries(CASH_CATEGORIES.map((c) => [c.value, c.label]));
 

@@ -7,9 +7,10 @@ import { PageHeader, ErrorState } from "@/components/ui/PageHeader";
 import { FinanceSubnav } from "../FinanceSubnav";
 import { createClient } from "@/lib/supabase/server";
 import { isKorvixAdmin } from "@/lib/auth/permissions";
-import { CreatePaymentButton, ConfirmPaymentButton, PaymentEditButton, PAYMENT_METHODS, PAYMENT_TYPES } from "@/components/operations/Payments";
+import { CreatePaymentButton, ConfirmPaymentButton, PaymentEditButton } from "@/components/operations/Payments";
 import { formatDate, formatMoney, isPastDay } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { PAYMENT_TYPES, PAYMENT_METHODS } from "@/lib/options";
 
 const typeLabel = Object.fromEntries(PAYMENT_TYPES.map((t) => [t.value, t.label]));
 const methodLabel = Object.fromEntries(PAYMENT_METHODS.map((m) => [m.value, m.label]));

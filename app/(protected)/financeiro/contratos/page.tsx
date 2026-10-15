@@ -6,9 +6,10 @@ import { PageHeader, ErrorState } from "@/components/ui/PageHeader";
 import { FinanceSubnav } from "../FinanceSubnav";
 import { createClient } from "@/lib/supabase/server";
 import { isKorvixAdmin } from "@/lib/auth/permissions";
-import { CreateContractButton, ContractRowActions, FREQUENCIES } from "@/components/operations/Contracts";
+import { CreateContractButton, ContractRowActions } from "@/components/operations/Contracts";
 import { calculateMRR } from "@/lib/finance/calculations";
 import { formatDate, formatMoney } from "@/lib/format";
+import { FREQUENCIES } from "@/lib/options";
 
 const frequencyLabel = Object.fromEntries(FREQUENCIES.map((f) => [f.value, f.label]));
 

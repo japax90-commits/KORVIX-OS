@@ -7,22 +7,9 @@ import { useAction } from "@/lib/hooks/useAction";
 import { todayISO } from "@/lib/format";
 import { Modal } from "@/components/ui/Modal";
 import { Field, FormError, IconButton, Input, Select, buttonClass } from "@/components/ui/Form";
+import { CASH_CATEGORIES } from "@/lib/options";
 
 export type CashMovementRecord = { id: string; category: string; direction: string; amount: number; description: string; movement_date: string; source_type: string | null };
-
-// Os valores existentes (minúsculos) foram mantidos para compatibilidade com
-// lançamentos antigos; "Impostos" e "Pró-labore" alimentam indicadores próprios.
-export const CASH_CATEGORIES = [
-  { value: "reserva", label: "Reserva" },
-  { value: "marketing", label: "Marketing" },
-  { value: "comercial", label: "Comercial" },
-  { value: "tecnologia", label: "Tecnologia" },
-  { value: "contratacao", label: "Contratação" },
-  { value: "expansao", label: "Expansão" },
-  { value: "Impostos", label: "Impostos" },
-  { value: "Pró-labore", label: "Pró-labore" },
-  { value: "outros", label: "Outros" },
-];
 
 function CashModal({ open, onClose, userId, movement }: { open: boolean; onClose: () => void; userId?: string; movement?: CashMovementRecord }) {
   const { run, busy, error, setError } = useAction();

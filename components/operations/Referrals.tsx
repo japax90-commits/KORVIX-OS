@@ -6,13 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useAction } from "@/lib/hooks/useAction";
 import { Modal } from "@/components/ui/Modal";
 import { Field, FormError, IconButton, Input, Select, buttonClass } from "@/components/ui/Form";
-
-export const REFERRAL_STATUSES = [
-  { value: "pendente", label: "Pendente" },
-  { value: "aprovada", label: "Aprovada" },
-  { value: "paga", label: "Paga" },
-  { value: "cancelada", label: "Cancelada" },
-];
+import { REFERRAL_STATUSES } from "@/lib/options";
 
 export function CreateReferralButton({ userName }: { userName: string }) {
   const [open, setOpen] = useState(false);

@@ -1,8 +1,41 @@
 import { Card, CardHeader, CardBody } from "@/components/ui/Card";
+import { StatCard } from "@/components/ui/StatCard";
+import { PageHeader, ErrorState } from "@/components/ui/PageHeader";
 import { Link2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { CreateAvDemandButton } from "@/components/operations/CreateAvDemandButton";
-import { AvDemandActions } from "@/components/operations/AvDemandActions";
-const stages=["DEMAND","SCHEDULED","VISIT","CAPTURE","TRANSFER","EDITING","INTERNAL_REVIEW","CLIENT_APPROVAL","FINALIZED","PUBLISHED"] as const;
-const labels:Record<string,string>={DEMAND:"Demanda",SCHEDULED:"Agendado",VISIT:"Visita",CAPTURE:"Captação",TRANSFER:"Transferência",EDITING:"Edição",INTERNAL_REVIEW:"Revisão interna",CLIENT_APPROVAL:"Aprovação cliente",FINALIZED:"Finalizado",PUBLISHED:"Publicado"};
-export default async function AudiovisualPage(){const s=await createClient();const{data:{user}}=await s.auth.getUser();if(!user)return null;const{data:items,error}=await s.from("av_demands").select("id,client_name,demand_type,responsible_name,status,deadline,quantity").order("deadline",{ascending:true});if(error)return <div className="rounded-lg border border-red-200 bg-red-50 p-5 text-sm text-red-700">Erro ao carregar audiovisual: {error.message}</div>;const rows=items??[];return <div className="space-y-6"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-xl font-semibold tracking-tight text-ink-900">Audiovisual</h2><p className="text-sm text-ink-500">Acesso restrito a Gabriel e Mateus.</p></div><CreateAvDemandButton userName={user.email??"Usuário"}/></div><div className="-mx-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0"><div className="flex gap-3" style={{minWidth:"1700px"}}>{stages.map(stage=>{const list=rows.filter(x=>x.status===stage);return <div key={stage} className="w-[190px] shrink-0"><div className="mb-2 flex items-center justify-between px-1"><p className="text-[12.5px] font-semibold text-ink-900">{labels[stage]}</p><span className="text-xs text-ink-500">{list.length}</span></div><div className="space-y-2">{list.map(d=><div key={d.id} className="rounded-lg border border-ink-100 bg-white p-3 shadow-sm"><div className="flex items-start justify-between gap-2"><p className="text-[13px] font-medium text-ink-900">{d.client_name}</p><AvDemandActions id={d.id}/></div><p className="mt-0.5 text-[11px] capitalize text-ink-500">{d.demand_type.replaceAll("_"," ")} · {d.quantity}x</p><div className="mt-2 flex items-center justify-between"><span className="text-[11px] text-ink-500">{d.responsible_name}</span><span className="text-[11px] text-ink-500">{new Date(d.deadline).toLocaleDateString("pt-BR")}</span></div></div>)}{list.length===0&&<div className="rounded-lg border border-dashed border-ink-300 p-3 text-center text-[10px] text-ink-500">Vazio</div>}</div></div>})}</div></div><Card><CardHeader icon={<Link2 size={16}/>} title="Entregas com link externo" subtitle="WeTransfer ou Drive"/><CardBody><p className="text-sm text-ink-500">Os arquivos pesados ficam fora do KORVIX OS; a operação registra demanda, status e entrega por link.</p></CardBody></Card></div>}
+import { AvBoard, CreateAvDemandButton, type AvDemand } from "@/components/operations/Audiovisual";
+import { isPastDay } from "@/lib/format";
+
+const DONE = ["FINALIZED", "PUBLISHED", "CANCELLED"];
+
+export default async function AudiovisualPage() {
+  const s = await createClient();
+  const { data: { user } } = await s.auth.getUser();
+  if (!user) return null;
+  const [{ data: items, error }, { data: users }, { data: clients }, { data: profile }] = await Promise.all([
+    s.from("av_demands").select("id,client_name,demand_type,responsible_name,responsible_user_id,status,deadline,quantity").order("deadline", { ascending: true }),
+    s.from("users").select("id,name").eq("active", true).order("name"),
+    s.from("clients").select("company_name").order("company_name"),
+    s.from("users").select("name").eq("id", user.id).maybeSingle(),
+  ]);
+  if (error) return <ErrorState title="Erro ao carregar o audiovisual" message={error.message} />;
+  const rows = (items ?? []) as AvDemand[];
+  const open = rows.filter((d) => !DONE.includes(d.status));
+  const shared = { users: users ?? [], clients: (clients ?? []).map((c) => c.company_name), userId: user.id, userName: profile?.name ?? user.email ?? "Usuário" };
+  return (
+    <div className="space-y-6">
+      <PageHeader title="Audiovisual" description="Pipeline de produção, da demanda à publicação." actions={<CreateAvDemandButton {...shared} />} />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatCard label="Em produção" value={String(open.length)} />
+        <StatCard label="Atrasadas" value={String(open.filter((d) => isPastDay(d.deadline)).length)} />
+        <StatCard label="Aguardando cliente" value={String(rows.filter((d) => d.status === "CLIENT_APPROVAL").length)} />
+        <StatCard label="Publicadas" value={String(rows.filter((d) => d.status === "PUBLISHED").length)} />
+      </div>
+      <AvBoard demands={rows} {...shared} />
+      <Card>
+        <CardHeader icon={<Link2 size={16} />} title="Entregas com link externo" subtitle="WeTransfer ou Google Drive" />
+        <CardBody><p className="text-sm text-ink-500">Os arquivos pesados ficam fora do KORVIX OS; a operação registra demanda, etapa, prazo e responsável.</p></CardBody>
+      </Card>
+    </div>
+  );
+}

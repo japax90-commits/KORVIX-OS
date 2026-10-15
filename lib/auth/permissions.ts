@@ -57,3 +57,6 @@ export function homeRouteFor(profile: UserProfile | null | undefined) {
   const first = allowedModules(profile)[0];
   return first ? `/${first}` : "/login?error=Acesso%20n%C3%A3o%20autorizado";
 }
+
+const roleLabels: Record<string, string> = { ceo: "CEO", cofundador: "Cofundador", vendedor: "Vendedor", audiovisual: "Audiovisual", tecnico: "Técnico", cto: "CTO" };
+export const roleLabel = (role?: string | null) => (role ? roleLabels[role] ?? role : "—");

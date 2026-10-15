@@ -2,9 +2,9 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { DesktopSidebar } from "@/components/layout/Sidebar";
-import { Topbar, roleLabel } from "@/components/layout/Topbar";
+import { Topbar } from "@/components/layout/Topbar";
 import { FlashMessage } from "@/components/layout/FlashMessage";
-import { allowedModules, isKorvixAdmin } from "@/lib/auth/permissions";
+import { allowedModules, isKorvixAdmin, roleLabel } from "@/lib/auth/permissions";
 
 function initials(name: string) {
   return name

@@ -9,28 +9,10 @@ import { KORVIX_PLAN_PRICES } from "@/lib/finance/calculations";
 import { Modal } from "@/components/ui/Modal";
 import { Field, FormError, IconButton, Input, Select, buttonClass } from "@/components/ui/Form";
 import { PlanShortcuts } from "@/components/operations/PlanShortcuts";
+import { PAYMENT_TYPES, PAYMENT_METHODS, PAYMENT_STATUSES } from "@/lib/options";
 
 type Client = { id: string; company_name: string };
 export type PaymentRecord = { id: string; amount: number; type: string; method: string; status: string; due_date: string; paid_at: string | null };
-
-export const PAYMENT_TYPES = [
-  { value: "primeira_venda", label: "Primeira venda" },
-  { value: "recorrencia", label: "Recorrência" },
-  { value: "avulso", label: "Avulso" },
-];
-export const PAYMENT_METHODS = [
-  { value: "pix", label: "Pix" },
-  { value: "boleto", label: "Boleto" },
-  { value: "credito", label: "Cartão de crédito" },
-  { value: "debito", label: "Cartão de débito" },
-  { value: "dinheiro", label: "Dinheiro" },
-];
-const PAYMENT_STATUSES = [
-  { value: "pendente", label: "Pendente" },
-  { value: "pago", label: "Pago" },
-  { value: "atrasado", label: "Atrasado" },
-  { value: "cancelado", label: "Cancelado" },
-];
 
 export function CreatePaymentButton({ clients }: { clients: Client[] }) {
   const [open, setOpen] = useState(false);

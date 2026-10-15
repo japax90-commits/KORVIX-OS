@@ -7,6 +7,7 @@ import { useAction } from "@/lib/hooks/useAction";
 import { todayISO } from "@/lib/format";
 import { Modal } from "@/components/ui/Modal";
 import { Field, FormError, IconButton, Input, Select, buttonClass } from "@/components/ui/Form";
+import { CLIENT_STATUSES } from "@/lib/options";
 
 export type ClientRecord = {
   id: string;
@@ -16,13 +17,6 @@ export type ClientRecord = {
   niche: string | null;
   operational_status: string;
 };
-
-export const CLIENT_STATUSES = [
-  { value: "onboarding", label: "Onboarding" },
-  { value: "operacao", label: "Em operação" },
-  { value: "renovacao", label: "Renovação" },
-  { value: "pausado", label: "Pausado" },
-];
 
 function ClientModal({ open, onClose, client, currentUserId }: { open: boolean; onClose: () => void; client?: ClientRecord; currentUserId?: string }) {
   const { run, busy, error, setError } = useAction();

@@ -7,8 +7,9 @@ import { friendlyError } from "@/lib/hooks/useAction";
 import { formatDateTime, formatMoney, fromDateTimeLocal, toDateTimeLocal } from "@/lib/format";
 import { Modal } from "@/components/ui/Modal";
 import { Field, FormError, IconButton, Input, Select, Textarea, buttonClass, inputClass } from "@/components/ui/Form";
-import { CHANNELS, PRIORITIES } from "./CrmClient";
+
 import { cn } from "@/lib/utils";
+import { CHANNELS, PRIORITIES } from "@/lib/options";
 
 const stages = ["lead", "qualificacao", "proposta", "negociacao", "ganho", "perdido"] as const;
 type Stage = (typeof stages)[number];

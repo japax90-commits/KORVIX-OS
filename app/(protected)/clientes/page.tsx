@@ -7,9 +7,10 @@ import { PageHeader, ErrorState } from "@/components/ui/PageHeader";
 import { Input, Select, buttonClass } from "@/components/ui/Form";
 import { ChevronRight, Users, Activity, RefreshCw, PauseCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { CreateClientButton, ClientEditButton, CLIENT_STATUSES } from "@/components/operations/ClientForm";
+import { CreateClientButton, ClientEditButton } from "@/components/operations/ClientForm";
 import { isKorvixAdmin } from "@/lib/auth/permissions";
 import { formatMoney } from "@/lib/format";
+import { CLIENT_STATUSES } from "@/lib/options";
 
 export default async function ClientesPage({ searchParams }: { searchParams?: { q?: string; status?: string } }) {
   const supabase = await createClient();

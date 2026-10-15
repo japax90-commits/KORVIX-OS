@@ -29,14 +29,14 @@ export function DataTable<T extends { id: string }>({
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[640px] border-collapse text-left text-sm">
+      <table className="w-full border-collapse text-left text-sm sm:min-w-[640px]">
         <thead>
           <tr className="border-b border-ink-100">
             {columns.map((col) => (
               <th
                 key={col.header}
                 className={cn(
-                  "whitespace-nowrap px-5 py-3 text-xs font-medium text-ink-500",
+                  "whitespace-nowrap bg-ink-50/60 px-4 py-3 text-xs font-medium text-ink-500 first:pl-5 last:pr-5",
                   col.hideOnMobile && "hidden sm:table-cell",
                   col.className
                 )}
@@ -56,7 +56,7 @@ export function DataTable<T extends { id: string }>({
                 <td
                   key={col.header}
                   className={cn(
-                    "whitespace-nowrap px-5 py-3.5 text-ink-900",
+                    "whitespace-nowrap px-4 py-3.5 align-middle text-ink-900 first:pl-5 last:pr-5",
                     col.hideOnMobile && "hidden sm:table-cell",
                     col.className
                   )}

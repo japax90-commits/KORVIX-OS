@@ -10,26 +10,9 @@ import type { OpportunityChannel } from "@/lib/types";
 import { Modal } from "@/components/ui/Modal";
 import { Field, FormError, Input, Select, buttonClass } from "@/components/ui/Form";
 import { PlanShortcuts } from "@/components/operations/PlanShortcuts";
+import { CHANNELS, PRIORITIES } from "@/lib/options";
 
 type User = { id: string; name: string };
-
-export const CHANNELS: { value: OpportunityChannel; label: string }[] = [
-  { value: "whatsapp", label: "WhatsApp" },
-  { value: "ligacao", label: "Ligação" },
-  { value: "instagram", label: "Instagram" },
-  { value: "trafego_pago", label: "Tráfego pago" },
-  { value: "indicacao", label: "Indicação" },
-  { value: "parceiro", label: "Parceiro" },
-  { value: "visita_presencial", label: "Visita presencial" },
-  { value: "outro", label: "Outro" },
-];
-
-export const PRIORITIES = [
-  { value: "baixa", label: "Baixa" },
-  { value: "media", label: "Média" },
-  { value: "alta", label: "Alta" },
-  { value: "urgente", label: "Urgente" },
-];
 
 export function NewOpportunityButton({ currentUserId, users, isAdmin = false }: { currentUserId: string; users: User[]; isAdmin?: boolean }) {
   const [open, setOpen] = useState(false);

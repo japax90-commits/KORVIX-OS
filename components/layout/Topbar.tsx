@@ -13,9 +13,6 @@ import { CommandPalette } from "./CommandPalette";
 export type TopbarUser = { name: string; email: string; roleLabel: string; initials: string };
 export type TopbarNotification = { id: string; title: string; body: string; read_at: string | null; created_at: string };
 
-const roleLabels: Record<string, string> = { ceo: "CEO", cofundador: "Cofundador", vendedor: "Vendedor", audiovisual: "Audiovisual", tecnico: "Técnico", cto: "CTO" };
-export const roleLabel = (role?: string | null) => (role ? roleLabels[role] ?? role : "—");
-
 function useClickOutside(open: boolean, close: () => void) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
