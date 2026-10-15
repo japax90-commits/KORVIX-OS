@@ -1,105 +1,87 @@
-# KORVIX OS — Protótipo navegável (V1)
+# KORVIX OS
 
-Protótipo visual e navegável do KORVIX OS, construído a partir da
-**KORVIX OS — Especificação Técnica Master V2.0**. Usa Next.js (App Router),
-React, TypeScript e Tailwind CSS, com dados fictícios em memória
-(`lib/mock-data.ts`) no lugar de banco de dados real.
+Sistema operacional interno da Korvix Digital: CRM, comercial, clientes,
+financeiro (pagamentos, contratos, caixa, comissões, indicações), audiovisual,
+agenda, tarefas, equipe e auditoria.
+
+**Stack:** Next.js 14 (App Router) · React 18 · TypeScript · Tailwind CSS ·
+Supabase (Auth + Postgres com RLS) · deploy na Vercel.
 
 ## Rodar localmente
 
 ```bash
 npm install
+cp .env.example .env.local   # preencha URL e chave publicável do Supabase
 npm run dev
 ```
 
-Abra `http://localhost:3000` — a rota raiz redireciona para `/login`.
-O formulário de login é apenas visual neste estágio: qualquer envio leva
-direto para `/dashboard` (não há autenticação real ainda).
+Verificações (as mesmas da CI em `.github/workflows/ci.yml`):
 
-## O que já está implementado
+```bash
+npx tsc --noEmit
+npm run lint
+npm run build
+```
 
-- **Login** (`app/(auth)/login`) — identidade visual Korvix, formulário responsivo.
-- **Layout protegido** (`app/(protected)/layout.tsx`) — sidebar fixa no desktop,
-  drawer no mobile, topbar com busca, notificações e usuário logado.
-- **Dashboard / Command Center** — os 5 blocos da seção 10 (Comercial,
-  Financeiro, Clientes, Operação, Equipe), com filtro de período visual.
-- **CRM** — funil Kanban por etapa (seção 11) + tabela de detalhamento.
-- **Comercial** — propostas/negociação, painel de metas, oportunidades perdidas.
-- **Clientes** — listagem + ficha 360° (`/clientes/[id]`) com as 8 abas da seção 13
-  (navegação de abas é visual; conteúdo real está na aba "Dados gerais" por ora).
-- **Financeiro** — visão geral + sub-rotas `pagamentos`, `comissoes`,
-  `indicacoes`, `caixa`, refletindo a separação de conceitos da seção 17.
-- **Audiovisual** — pipeline Kanban com os 11 estágios da seção 21.
-- **Agenda** — visão unificada de compromissos, agrupada por dia.
-- **Equipe e Permissões** — usuários do seed com seus `moduleAccess` (seção 5/8).
-- **Tarefas** e **Auditoria** — módulos transversais (seções 9 e 20).
-
-Todos os enums de status usam o componente `<StatusBadge>`
-(`components/ui/Badge.tsx`), que centraliza a cor e o rótulo de cada estado —
-nenhuma tela decide isso por conta própria, para não haver divergência visual
-entre módulos.
-
-## O que ainda é apenas estrutura (não funcional)
-
-Por instrução explícita do escopo desta primeira entrega ("não precisa
-implementar ainda todas as regras de negócio"), os seguintes pontos estão
-representados visualmente mas **não têm lógica real por trás**:
-
-- Botões de ação ("Nova oportunidade", "Registrar pagamento", "Confirmar",
-  "Novo usuário" etc.) não escrevem em nenhum estado — são placeholders de
-  interface aguardando a camada de dados.
-- O login não valida credenciais nem cria sessão.
-- O RBAC (seção 8) é exibido como dado (`moduleAccess` de cada usuário), mas o
-  menu ainda não é filtrado dinamicamente por usuário logado — hoje mostra
-  todos os módulos para qualquer visitante, propositalmente, para permitir a
-  demonstração completa do protótipo.
-- A máquina de estados (seção 29) ainda não bloqueia transições inválidas —
-  os quadros Kanban são apenas leitura dos dados mockados.
-- Auditoria, notificações e tarefas mostram registros de exemplo, mas não são
-  geradas automaticamente por nenhuma ação ainda.
-
-## Ponto sinalizado para decisão (não resolvido por conta própria)
-
-A Especificação Técnica Master V2.0 já resolveu a maior parte das
-ambiguidades do documento original. Um ponto que segue **aberto** e não foi
-inventado neste protótipo: a tela "Editar permissões" (usuário × módulo ×
-ação, mencionada na seção 45) ainda não tem layout definido — hoje o módulo
-Equipe apenas exibe os acessos existentes em modo leitura, com uma nota
-explícita na tela avisando que a edição será implementada na próxima etapa.
-
-## Próximos passos técnicos (fora do escopo desta entrega)
-
-1. Introduzir Prisma + PostgreSQL seguindo o schema da seção 26, substituindo
-   `lib/mock-data.ts` por chamadas reais (os tipos de `lib/types.ts` já foram
-   desenhados para mapear 1:1 com as futuras tabelas).
-2. Autenticação real via NextAuth (seção 6).
-3. Server Actions com `requirePermission`/`requireAction` (seção 8) por trás
-   de cada botão hoje decorativo.
-4. Deploy na Vercel com banco gerenciado (seção 40).
-
-## Estrutura de pastas
+## Arquitetura
 
 ```
 app/
-  (auth)/login/
-  (protected)/
-    layout.tsx        → sidebar + topbar
-    dashboard/
-    crm/
-    comercial/
-    clientes/[id]/
-    financeiro/{pagamentos,comissoes,indicacoes,caixa}/
-    audiovisual/
-    agenda/
-    equipe/
-    tarefas/
-    auditoria/
+  (auth)/login, forgot-password, reset-password   → Supabase Auth
+  (protected)/layout.tsx                          → sidebar, topbar, perfil e notificações reais
+  (protected)/<módulo>/page.tsx                   → Server Components que leem o Supabase
+  actions/auth.ts                                 → logout (Server Action)
+middleware.ts                                     → sessão + RBAC por rota (falha fechada)
 components/
-  layout/   → Sidebar, Topbar
-  ui/       → Card, Badge/StatusBadge, StatCard, Table
+  layout/      → Sidebar, Topbar, CommandPalette (⌘K), FlashMessage
+  ui/          → Card, Badge, StatCard, Table, Modal, Form, PageHeader (design system)
+  operations/  → formulários e ações de cada módulo (Client Components)
 lib/
-  types.ts       → tipos alinhados ao futuro schema Prisma
-  mock-data.ts   → dados fictícios de demonstração
-  navigation.ts  → configuração central do menu
-  utils.ts
+  auth/permissions.ts   → regra única de acesso por módulo (menu, rotas e páginas)
+  format.ts             → datas no fuso America/Sao_Paulo e moeda BRL
+  options.ts            → listas de opções compartilhadas (status, tipos, papéis…)
+  hooks/useAction.ts    → mutação padrão: carregando, erro amigável, router.refresh()
+  finance/, business/   → cálculos financeiros, planos e meta mensal
+supabase/
+  migrations/           → migrations versionadas
+  proposed/             → mudanças que dependem de decisão antes de aplicar
 ```
+
+### Permissões
+
+| Perfil | Módulos |
+| --- | --- |
+| Administrador (`korvixdigital@gmail.com`) | Todos |
+| Cofundador | CRM, Agenda, Tarefas |
+| Demais papéis | CRM, Comercial, Clientes, Agenda, Tarefas |
+
+A regra está em `lib/auth/permissions.ts` e é aplicada no menu, no middleware
+(todas as rotas de módulo) e reforçada no banco pelas políticas RLS.
+
+### Regras financeiras
+
+- Pagamentos entram como **pendentes**; ao confirmar, a RPC
+  `confirm_payment_and_sync_finance` gera a receita no caixa e as comissões.
+- Editar ou excluir um pagamento recalcula/remove caixa e comissões vinculados
+  (`update_/delete_payment_and_sync_finance`).
+- Lançamentos de caixa automáticos ficam bloqueados para edição manual.
+- Pró-labore = 20% da receita recebida. Impostos e pró-labore lançados no caixa
+  usam as categorias "Impostos" e "Pró-labore".
+
+## Migrations pendentes de aplicação
+
+A migration `supabase/migrations/20261015120000_fix_finance_rpcs_and_tighten_rls.sql`
+**ainda não foi aplicada em produção**. Sem ela, os botões *Confirmar* e
+*Editar pagamento* continuam falhando com "permissão negada". Ela foi validada
+numa réplica local do schema e das políticas de produção.
+
+`supabase/proposed/align_db_admin_with_app_rbac.sql` alinha o banco à regra do
+app (apenas a conta principal é administradora) e precisa de decisão antes.
+
+## Limitações conhecidas
+
+- Criação de novos logins é feita no painel do Supabase (Authentication).
+- A tabela `audit_logs` ainda não é alimentada automaticamente pelas ações.
+- A meta mensal de contratos (5) está em `lib/business/goals.ts`.
+- `lib/mock-data.ts` e `lib/types.ts` são do protótipo original; `mock-data`
+  não é mais usado por nenhuma tela.
