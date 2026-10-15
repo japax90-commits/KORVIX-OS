@@ -24,7 +24,11 @@ export function CommandPalette({ open, onClose, allowedModules }: { open: boolea
       { href: "/financeiro/indicacoes", label: "Indicações", module: "financeiro", icon: primaryNav[4].icon, description: "Financeiro · comissões de indicação" },
     ].filter((item) => allowedModules.includes(item.module));
     const q = query.trim().toLowerCase();
-    return q ? nav.filter((item) => `${item.label} ${item.description}`.toLowerCase().includes(q)) : nav;
+    if (!q) return nav;
+    // Correspondência no nome da página vem antes da correspondência na descrição.
+    const byLabel = nav.filter((item) => item.label.toLowerCase().includes(q));
+    const byDescription = nav.filter((item) => !byLabel.includes(item) && item.description.toLowerCase().includes(q));
+    return [...byLabel, ...byDescription];
   }, [allowedModules, query]);
 
   useEffect(() => {
