@@ -113,3 +113,12 @@ export const AV_STAGES = [
   { value: "PUBLISHED", label: "Publicado" },
   { value: "CANCELLED", label: "Cancelado" },
 ];
+
+export const ROLES = [
+  { value: "ceo", label: "CEO" },
+  { value: "cofundador", label: "Cofundador" },
+  { value: "vendedor", label: "Vendedor" },
+  { value: "audiovisual", label: "Audiovisual" },
+  { value: "tecnico", label: "Técnico" },
+  { value: "cto", label: "CTO" },
+];

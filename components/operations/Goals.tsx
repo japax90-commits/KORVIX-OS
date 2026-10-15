@@ -1,0 +1,75 @@
+"use client";
+
+import { useState } from "react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import { useAction } from "@/lib/hooks/useAction";
+import { Modal } from "@/components/ui/Modal";
+import { Field, FormError, IconButton, Input, Select, buttonClass } from "@/components/ui/Form";
+
+export type GoalRecord = { id: string; vendor_id: string | null; vendor_name: string; metric: string; period: string; target: number; achieved: number };
+type User = { id: string; name: string };
+
+function GoalModal({ open, onClose, goal, users }: { open: boolean; onClose: () => void; goal?: GoalRecord; users: User[] }) {
+  const { run, busy, error, setError } = useAction();
+  async function submit(fd: FormData) {
+    const vendorId = String(fd.get("vendor_id") || "");
+    const metric = String(fd.get("metric") || "").trim();
+    const period = String(fd.get("period") || "").trim();
+    const target = Number(fd.get("target"));
+    const achieved = Number(fd.get("achieved") || 0);
+    if (!vendorId || !metric || !period) return setError("Informe vendedor, métrica e período.");
+    if (!Number.isFinite(target) || target <= 0 || !Number.isFinite(achieved) || achieved < 0) return setError("Informe meta maior que zero e realizado válido.");
+    const payload = { vendor_id: vendorId, vendor_name: users.find((u) => u.id === vendorId)?.name ?? goal?.vendor_name ?? "", metric, period, target, achieved };
+    const supabase = createClient();
+    await run(async () => (goal ? supabase.from("goals").update(payload).eq("id", goal.id) : supabase.from("goals").insert(payload)), { onSuccess: onClose });
+  }
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={goal ? "Editar meta" : "Nova meta"}
+      size="sm"
+      footer={<><button type="button" onClick={onClose} className={buttonClass("secondary")}>Cancelar</button><button type="submit" form={`goal-${goal?.id ?? "new"}`} disabled={busy} className={buttonClass("primary")}>{busy ? "Salvando..." : "Salvar"}</button></>}
+    >
+      <form id={`goal-${goal?.id ?? "new"}`} action={submit} className="space-y-4">
+        <Field label="Vendedor">
+          <Select name="vendor_id" defaultValue={goal?.vendor_id ?? ""} required>
+            <option value="" disabled>Selecione</option>
+            {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+          </Select>
+        </Field>
+        <Field label="Métrica"><Input name="metric" defaultValue={goal?.metric ?? "Contratos fechados"} required /></Field>
+        <Field label="Período"><Input name="period" defaultValue={goal?.period ?? new Date().toLocaleDateString("pt-BR", { month: "long", year: "numeric" })} required /></Field>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Meta"><Input name="target" type="number" min="1" step="any" defaultValue={goal?.target} required /></Field>
+          <Field label="Realizado"><Input name="achieved" type="number" min="0" step="any" defaultValue={goal?.achieved ?? 0} /></Field>
+        </div>
+        <FormError message={error} />
+      </form>
+    </Modal>
+  );
+}
+
+export function CreateGoalButton({ users }: { users: User[] }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button onClick={() => setOpen(true)} className={buttonClass("secondary", "px-3 py-1.5 text-xs")}><Plus size={14} /> Nova meta</button>
+      {open && <GoalModal open onClose={() => setOpen(false)} users={users} />}
+    </>
+  );
+}
+
+export function GoalActions({ goal, users }: { goal: GoalRecord; users: User[] }) {
+  const [open, setOpen] = useState(false);
+  const { run, busy, error } = useAction();
+  return (
+    <span className="inline-flex items-center gap-1">
+      <IconButton label="Editar meta" onClick={() => setOpen(true)}><Pencil size={14} /></IconButton>
+      <IconButton label="Excluir meta" tone="danger" disabled={busy} onClick={() => window.confirm("Excluir esta meta?") && run(async () => createClient().from("goals").delete().eq("id", goal.id))}><Trash2 size={14} /></IconButton>
+      {error && <span role="alert" className="text-xs text-danger">{error}</span>}
+      {open && <GoalModal open onClose={() => setOpen(false)} goal={goal} users={users} />}
+    </span>
+  );
+}

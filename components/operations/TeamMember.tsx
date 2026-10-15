@@ -1,0 +1,62 @@
+"use client";
+
+import { useState } from "react";
+import { Pencil } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import { useAction } from "@/lib/hooks/useAction";
+import { Modal } from "@/components/ui/Modal";
+import { Field, FormError, IconButton, Input, Select, buttonClass } from "@/components/ui/Form";
+import { ROLES } from "@/lib/options";
+
+type Member = { id: string; name: string; email: string; role: string; active: boolean; avatar_initials: string | null };
+
+export function TeamMemberEdit({ member }: { member: Member }) {
+  const [open, setOpen] = useState(false);
+  const { run, busy, error, setError } = useAction();
+  async function submit(fd: FormData) {
+    const name = String(fd.get("name") || "").trim();
+    if (!name) return setError("Informe o nome.");
+    const active = fd.get("active") === "true";
+    if (!active && !window.confirm(`Desativar ${name}? A pessoa perde o acesso ao KORVIX OS no próximo carregamento.`)) return;
+    await run(
+      async () =>
+        createClient().from("users").update({
+          name,
+          role: String(fd.get("role")),
+          active,
+          avatar_initials: String(fd.get("avatar_initials") || "").trim().toUpperCase().slice(0, 2) || null,
+        }).eq("id", member.id),
+      { onSuccess: () => setOpen(false) },
+    );
+  }
+  return (
+    <>
+      <IconButton label={`Editar ${member.name}`} onClick={() => setOpen(true)}><Pencil size={15} /></IconButton>
+      {open && (
+        <Modal
+          open
+          onClose={() => setOpen(false)}
+          title="Editar membro da equipe"
+          description={member.email}
+          size="sm"
+          footer={<><button type="button" onClick={() => setOpen(false)} className={buttonClass("secondary")}>Cancelar</button><button type="submit" form={`member-${member.id}`} disabled={busy} className={buttonClass("primary")}>{busy ? "Salvando..." : "Salvar"}</button></>}
+        >
+          <form id={`member-${member.id}`} action={submit} className="space-y-4">
+            <Field label="Nome"><Input name="name" defaultValue={member.name} required /></Field>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Papel">
+                <Select name="role" defaultValue={member.role}>
+                  {ROLES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+                  {!ROLES.some((r) => r.value === member.role) && <option value={member.role}>{member.role}</option>}
+                </Select>
+              </Field>
+              <Field label="Iniciais"><Input name="avatar_initials" defaultValue={member.avatar_initials ?? ""} maxLength={2} /></Field>
+            </div>
+            <Field label="Acesso"><Select name="active" defaultValue={String(member.active)}><option value="true">Ativo</option><option value="false">Inativo</option></Select></Field>
+            <FormError message={error} />
+          </form>
+        </Modal>
+      )}
+    </>
+  );
+}
