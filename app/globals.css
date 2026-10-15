@@ -118,6 +118,15 @@
   background: transparent;
 }
 
+/* Barra de rolagem horizontal visível e discreta no quadro do funil */
+.kanban-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--ink-300)) transparent;
+}
+.kanban-scroll::-webkit-scrollbar {
+  height: 10px;
+}
+
 .focus-ring {
   @apply outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface;
 }

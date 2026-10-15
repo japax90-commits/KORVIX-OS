@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Archive, CalendarClock, Search, Trash2, UserPlus } from "lucide-react";
+import { Archive, CalendarClock, ChevronLeft, ChevronRight, Search, Trash2, UserPlus } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { friendlyError } from "@/lib/hooks/useAction";
 import { formatDateTime, formatMoney, fromDateTimeLocal, toDateTimeLocal, todayISO } from "@/lib/format";
@@ -127,7 +127,18 @@ export function CrmClientV2({ opportunities, users, currentUserId, isAdmin = fal
     setSelected(item);
   }
 
+  // Cartões com gravação em andamento: impedem movimentações duplicadas/concorrentes.
+  const savingIds = useRef(new Set<string>());
+  const [movingIds, setMovingIds] = useState<string[]>([]);
+  const markMoving = (id: string, on: boolean) => {
+    if (on) savingIds.current.add(id);
+    else savingIds.current.delete(id);
+    setMovingIds(Array.from(savingIds.current));
+  };
+
   async function move(item: Row, stage: Stage) {
+    const from = normalizeStage(item.stage);
+    if (from === stage || savingIds.current.has(item.id)) return;
     // Perda exige motivo: abre o formulário em vez de mover diretamente.
     if (stage === "perdido" && !item.loss_reason) {
       open(item);
@@ -135,17 +146,93 @@ export function CrmClientV2({ opportunities, users, currentUserId, isAdmin = fal
       return;
     }
     setError("");
+    markMoving(item.id, true);
+    // Atualização otimista: o cartão muda de coluna na hora…
+    setItems((c) => c.map((i) => (i.id === item.id ? { ...i, stage, probability: probabilities[stage] } : i)));
+    // …e só é gravado se ainda estiver na etapa que o usuário via (evita sobrescrever
+    // uma mudança feita por outra pessoa/aba enquanto isso).
     const { data, error: e } = await createClient()
       .from("opportunities")
       .update({ stage, probability: probabilities[stage], last_interaction_at: new Date().toISOString() })
       .eq("id", item.id)
+      .eq("stage", item.stage)
       .select("*")
-      .single();
-    if (e) return setError(friendlyError(e.message));
-    if (data) {
-      setItems((c) => c.map((i) => (i.id === item.id ? (data as Row) : i)));
-      toast(`${item.client_name} movido para ${labels[stage]}.`);
+      .maybeSingle();
+    markMoving(item.id, false);
+    if (e || !data) {
+      // Desfaz: a interface nunca fica mostrando uma etapa que não foi salva.
+      setItems((c) => c.map((i) => (i.id === item.id ? item : i)));
+      const message = e ? friendlyError(e.message) : "A oportunidade foi alterada em outro lugar. O funil foi atualizado com os dados atuais.";
+      setError(`Não foi possível mover "${item.client_name}" para ${labels[stage]}. ${message}`);
+      toast(`Não foi possível mover ${item.client_name}.`, "error");
+      if (!e) router.refresh();
+      return;
     }
+    setItems((c) => c.map((i) => (i.id === item.id ? (data as Row) : i)));
+    toast(`${item.client_name} movido para ${labels[stage]}.`);
+    // Sincroniza indicadores e demais dados do servidor com o valor persistido.
+    router.refresh();
+  }
+
+  // ---- Arrastar e soltar (API nativa do navegador; sem dependências) ----
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dropStage, setDropStage] = useState<Stage | null>(null);
+  const draggingItem = draggingId ? items.find((i) => i.id === draggingId) ?? null : null;
+
+  function onCardDragStart(e: React.DragEvent, item: Row) {
+    e.dataTransfer.setData("text/plain", item.id);
+    e.dataTransfer.effectAllowed = "move";
+    setDraggingId(item.id);
+  }
+  function endDrag() {
+    setDraggingId(null);
+    setDropStage(null);
+  }
+  function onColumnDragOver(e: React.DragEvent, stage: Stage) {
+    if (!draggingItem) return;
+    e.preventDefault();
+    const same = normalizeStage(draggingItem.stage) === stage;
+    e.dataTransfer.dropEffect = same ? "none" : "move";
+    if (dropStage !== stage) setDropStage(stage);
+  }
+  function onColumnDragLeave(e: React.DragEvent, stage: Stage) {
+    if (dropStage === stage && !e.currentTarget.contains(e.relatedTarget as Node | null)) setDropStage(null);
+  }
+  function onColumnDrop(e: React.DragEvent, stage: Stage) {
+    e.preventDefault();
+    const id = e.dataTransfer.getData("text/plain") || draggingId;
+    const item = items.find((i) => i.id === id);
+    endDrag();
+    if (item) void move(item, stage);
+  }
+
+  // ---- Rolagem horizontal do quadro ----
+  const scroller = useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = useState({ left: false, right: false });
+  const updateEdges = () => {
+    const el = scroller.current;
+    if (!el) return;
+    setEdges({ left: el.scrollLeft > 4, right: el.scrollLeft + el.clientWidth < el.scrollWidth - 4 });
+  };
+  useEffect(() => {
+    updateEdges();
+    const el = scroller.current;
+    if (!el) return;
+    const ro = new ResizeObserver(updateEdges);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [filtered.length]);
+  function scrollColumns(direction: 1 | -1) {
+    const el = scroller.current;
+    if (el) el.scrollBy({ left: direction * Math.max(el.clientWidth * 0.8, 260), behavior: "smooth" });
+  }
+  // Durante o arraste, aproximar o cartão das bordas rola o quadro.
+  function onBoardDragOver(e: React.DragEvent) {
+    const el = scroller.current;
+    if (!el || !draggingId) return;
+    const rect = el.getBoundingClientRect();
+    if (e.clientX < rect.left + 80) el.scrollLeft -= 24;
+    else if (e.clientX > rect.right - 80) el.scrollLeft += 24;
   }
 
   async function archive(item: Row) {
@@ -226,61 +313,118 @@ export function CrmClientV2({ opportunities, users, currentUserId, isAdmin = fal
       </div>
       <FormError message={error} />
 
-      <div className="-mx-4 overflow-x-auto px-4 pb-3 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-        <div className="flex gap-3">
-          {stages.map((stage) => {
-            const list = filtered.filter((i) => normalizeStage(i.stage) === stage);
-            const total = list.reduce((sum, i) => sum + Number(i.estimated_value || 0), 0);
-            return (
-              <section key={stage} className="flex w-[272px] shrink-0 flex-col rounded-xl border border-ink-200 bg-ink-50 p-3">
-                <div className="mb-3 flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className={cn("h-2 w-2 rounded-full", stageAccent[stage])} />
-                    <h3 className="text-sm font-semibold text-ink-900">{labels[stage]}</h3>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs text-ink-500">
+          <span className="hidden sm:inline">Arraste os cartões entre as etapas ou use o seletor de cada cartão.</span>
+          <span className="sm:hidden">Deslize para ver todas as etapas · use o seletor para mover.</span>
+        </p>
+        <div className="flex shrink-0 items-center gap-1">
+          <IconButton label="Etapas anteriores" onClick={() => scrollColumns(-1)} disabled={!edges.left} className="border border-ink-200 bg-surface"><ChevronLeft size={16} /></IconButton>
+          <IconButton label="Próximas etapas" onClick={() => scrollColumns(1)} disabled={!edges.right} className="border border-ink-200 bg-surface"><ChevronRight size={16} /></IconButton>
+        </div>
+      </div>
+
+      <div className="relative">
+        {/* Indicam que há mais colunas fora da área visível */}
+        <div aria-hidden className={cn("pointer-events-none absolute inset-y-0 left-0 z-10 w-8 rounded-l-xl bg-gradient-to-r from-canvas to-transparent transition-opacity", edges.left ? "opacity-100" : "opacity-0")} />
+        <div aria-hidden className={cn("pointer-events-none absolute inset-y-0 right-0 z-10 w-8 rounded-r-xl bg-gradient-to-l from-canvas to-transparent transition-opacity", edges.right ? "opacity-100" : "opacity-0")} />
+        <div
+          ref={scroller}
+          onScroll={updateEdges}
+          onDragOver={onBoardDragOver}
+          role="region"
+          aria-label="Funil de vendas — role horizontalmente para ver todas as etapas"
+          tabIndex={0}
+          className="kanban-scroll focus-ring overflow-x-auto overscroll-x-contain rounded-xl pb-3 max-sm:snap-x max-sm:snap-mandatory"
+        >
+          <div className="flex w-max min-w-full gap-3">
+            {stages.map((stage) => {
+              const list = filtered.filter((i) => normalizeStage(i.stage) === stage);
+              const total = list.reduce((sum, i) => sum + Number(i.estimated_value || 0), 0);
+              const isTarget = dropStage === stage && draggingItem && normalizeStage(draggingItem.stage) !== stage;
+              const isSource = draggingItem && normalizeStage(draggingItem.stage) === stage;
+              return (
+                <section
+                  key={stage}
+                  aria-label={`${labels[stage]}: ${list.length} oportunidade(s)`}
+                  data-stage={stage}
+                  onDragOver={(e) => onColumnDragOver(e, stage)}
+                  onDragLeave={(e) => onColumnDragLeave(e, stage)}
+                  onDrop={(e) => onColumnDrop(e, stage)}
+                  className={cn(
+                    "flex max-h-[calc(100dvh-11rem)] min-h-[18rem] w-[min(84vw,280px)] shrink-0 grow basis-[min(84vw,280px)] snap-start flex-col rounded-xl border bg-ink-50 transition-colors sm:w-[256px] sm:basis-[256px]",
+                    isTarget ? "border-primary bg-primary/5 ring-2 ring-primary/40" : "border-ink-200",
+                    draggingItem && !isSource && !isTarget && "border-dashed",
+                  )}
+                >
+                  <div className="shrink-0 px-3 pt-3">
+                    <div className="mb-1 flex items-center justify-between gap-2">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className={cn("h-2 w-2 shrink-0 rounded-full", stageAccent[stage])} />
+                        <h3 className="truncate text-sm font-semibold text-ink-900">{labels[stage]}</h3>
+                      </div>
+                      <span className="shrink-0 rounded-full bg-surface px-2 py-0.5 text-xs font-medium tabular-nums text-ink-600 ring-1 ring-ink-200">{list.length}</span>
+                    </div>
+                    <p className="mb-3 text-xs tabular-nums text-ink-500">{formatMoney(total)}</p>
                   </div>
-                  <span className="rounded-full bg-surface px-2 py-0.5 text-xs font-medium text-ink-600 ring-1 ring-ink-200">{list.length}</span>
-                </div>
-                <p className="-mt-2 mb-3 text-xs text-ink-500">{formatMoney(total)}</p>
-                <div className="space-y-2.5">
-                  {list.map((item) => {
-                    const overdue = item.next_followup_at && new Date(item.next_followup_at).getTime() < now && !["ganho", "perdido"].includes(normalizeStage(item.stage));
-                    return (
-                      <article key={item.id} className="rounded-lg border border-ink-200 bg-surface p-3 shadow-sm">
-                        <button type="button" className="w-full text-left" onClick={() => open(item)}>
-                          <p className="truncate text-sm font-medium text-ink-900">{item.client_name}</p>
-                          <p className="text-sm text-ink-700">{formatMoney(item.estimated_value || 0)}</p>
-                          <p className="mt-1 text-xs text-ink-500">{priorityLabel[item.priority || "media"] ?? item.priority} · {item.probability ?? probabilities[stage]}% · {channelLabel[item.channel || ""] ?? item.channel ?? "—"}</p>
-                          {isAdmin && <p className="mt-0.5 truncate text-xs text-ink-500">{userName(item.origin_owner_id)}</p>}
-                          {item.next_followup_at && (
-                            <p className={cn("mt-1.5 flex items-center gap-1 text-xs", overdue ? "font-medium text-danger" : "text-ink-500")}>
-                              <CalendarClock size={12} /> {formatDateTime(item.next_followup_at)}{overdue ? " · atrasado" : ""}
-                            </p>
+                  <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto px-3 pb-3">
+                    {isTarget && (
+                      <div className="flex items-center justify-center rounded-lg border-2 border-dashed border-primary/60 bg-primary/10 p-3 text-xs font-medium text-primary">
+                        Soltar em {labels[stage]}
+                      </div>
+                    )}
+                    {list.map((item) => {
+                      const overdue = item.next_followup_at && new Date(item.next_followup_at).getTime() < now && !["ganho", "perdido"].includes(normalizeStage(item.stage));
+                      const moving = movingIds.includes(item.id);
+                      return (
+                        <article
+                          key={item.id}
+                          draggable={!moving}
+                          onDragStart={(e) => onCardDragStart(e, item)}
+                          onDragEnd={endDrag}
+                          aria-busy={moving || undefined}
+                          className={cn(
+                            "rounded-lg border border-ink-200 bg-surface p-3 shadow-sm transition-opacity",
+                            moving ? "cursor-progress opacity-60" : "cursor-grab active:cursor-grabbing",
+                            draggingId === item.id && "opacity-40",
                           )}
-                        </button>
-                        {normalizeStage(item.stage) === "ganho" && (
-                          clientFor(item.client_name) ? (
-                            <Link href={`/clientes/${clientFor(item.client_name)!.id}`} className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-korvix-600 hover:text-korvix-700">Ver ficha do cliente →</Link>
-                          ) : (
-                            <button type="button" onClick={() => convertToClient(item)} disabled={converting === item.id} className="mt-2 inline-flex items-center gap-1 rounded-md bg-success/10 px-2 py-1 text-xs font-medium text-success hover:bg-success/15 disabled:opacity-60">
-                              <UserPlus size={13} /> {converting === item.id ? "Cadastrando..." : "Cadastrar como cliente"}
-                            </button>
-                          )
-                        )}
-                        <div className="mt-2 flex items-center gap-1 border-t border-ink-100 pt-2">
-                          <select aria-label={`Mover ${item.client_name} de etapa`} className="focus-ring min-w-0 flex-1 rounded-md border border-ink-200 bg-surface px-1.5 py-1 text-xs text-ink-700" value={normalizeStage(item.stage)} onChange={(e) => move(item, normalizeStage(e.target.value))}>
-                            {stages.map((option) => <option key={option} value={option}>{labels[option]}</option>)}
-                          </select>
-                          <IconButton label="Arquivar" onClick={() => archive(item)}><Archive size={14} /></IconButton>
-                          {isAdmin && <IconButton label="Excluir definitivamente" tone="danger" onClick={() => remove(item)}><Trash2 size={14} /></IconButton>}
-                        </div>
-                      </article>
-                    );
-                  })}
-                  {list.length === 0 && <p className="rounded-lg border border-dashed border-ink-300 p-3 text-center text-xs text-ink-500">Nenhuma oportunidade</p>}
-                </div>
-              </section>
-            );
-          })}
+                        >
+                          <button type="button" className="w-full text-left" onClick={() => open(item)}>
+                            <p className="truncate text-sm font-medium text-ink-900">{item.client_name}</p>
+                            <p className="text-sm tabular-nums text-ink-700">{formatMoney(item.estimated_value || 0)}</p>
+                            <p className="mt-1 text-xs text-ink-500">{priorityLabel[item.priority || "media"] ?? item.priority} · {item.probability ?? probabilities[stage]}% · {channelLabel[item.channel || ""] ?? item.channel ?? "—"}</p>
+                            {isAdmin && <p className="mt-0.5 truncate text-xs text-ink-500">{userName(item.origin_owner_id)}</p>}
+                            {item.next_followup_at && (
+                              <p className={cn("mt-1.5 flex items-center gap-1 text-xs", overdue ? "font-medium text-danger" : "text-ink-500")}>
+                                <CalendarClock size={12} /> {formatDateTime(item.next_followup_at)}{overdue ? " · atrasado" : ""}
+                              </p>
+                            )}
+                          </button>
+                          {normalizeStage(item.stage) === "ganho" && (
+                            clientFor(item.client_name) ? (
+                              <Link href={`/clientes/${clientFor(item.client_name)!.id}`} className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-korvix-600 hover:text-korvix-700">Ver ficha do cliente →</Link>
+                            ) : (
+                              <button type="button" onClick={() => convertToClient(item)} disabled={converting === item.id} className="mt-2 inline-flex items-center gap-1 rounded-md bg-success/10 px-2 py-1 text-xs font-medium text-success hover:bg-success/15 disabled:opacity-60">
+                                <UserPlus size={13} /> {converting === item.id ? "Cadastrando..." : "Cadastrar como cliente"}
+                              </button>
+                            )
+                          )}
+                          <div className="mt-2 flex items-center gap-1 border-t border-ink-100 pt-2">
+                            <select aria-label={`Mover ${item.client_name} de etapa`} disabled={moving} className="focus-ring min-w-0 flex-1 rounded-md border border-ink-200 bg-surface px-1.5 py-1 text-xs text-ink-700 disabled:opacity-60" value={normalizeStage(item.stage)} onChange={(e) => move(item, normalizeStage(e.target.value))}>
+                              {stages.map((option) => <option key={option} value={option}>{labels[option]}</option>)}
+                            </select>
+                            <IconButton label="Arquivar" onClick={() => archive(item)} disabled={moving}><Archive size={14} /></IconButton>
+                            {isAdmin && <IconButton label="Excluir definitivamente" tone="danger" onClick={() => remove(item)} disabled={moving}><Trash2 size={14} /></IconButton>}
+                          </div>
+                        </article>
+                      );
+                    })}
+                    {list.length === 0 && !isTarget && <p className="rounded-lg border border-dashed border-ink-300 p-3 text-center text-xs text-ink-500">Nenhuma oportunidade</p>}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
         </div>
       </div>
 

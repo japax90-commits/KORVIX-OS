@@ -12,6 +12,38 @@ Produção (`korvix-os.vercel.app`, branch `main`) e banco de produção: **não
 | D/E — Módulos e acabamento | `2e4c9da` | Ordenação/paginação nas tabelas, breadcrumbs, tamanhos de botão, tema no login, correções de contraste apontadas pelos testes |
 
 
+## Correção do funil (arrastar e soltar + enquadramento horizontal)
+
+Arquivos: `app/(protected)/crm/CrmClientV2.tsx`, `app/globals.css`. Sem biblioteca nova
+(arrastar e soltar nativo do HTML5), sem mudança de banco.
+
+- **Arrastar e soltar** entre quaisquer etapas, para frente e para trás. A coluna de
+  destino fica destacada com o aviso "Soltar em …". O cartão muda na hora e a etapa é
+  gravada com os campos existentes (`stage`, `probability`, `last_interaction_at`).
+  A tela usa a linha devolvida pelo banco.
+- **Falha**: o cartão volta à etapa original e aparece uma mensagem clara + aviso.
+  A gravação só acontece se a etapa no banco ainda for a que a tela mostrava
+  (`.eq("stage", anterior)`); se outra pessoa mudou antes, nada é sobrescrito e o funil
+  recarrega com os dados atuais.
+- **Sem duplicação**: enquanto grava, o cartão fica bloqueado (não arrasta, seletor e
+  botões desativados).
+- **Enquadramento**:
+  - o quadro rola na horizontal dentro da própria área, não a página;
+  - as colunas têm largura fixa confortável (256px; até 280px no celular);
+  - setas "Etapas anteriores / Próximas etapas" e sombreado nas bordas;
+  - barra de rolagem fina visível;
+  - ao arrastar perto da borda, o quadro rola sozinho;
+  - colunas com altura limitada à tela e rolagem vertical própria.
+- **Toque**: o arrastar nativo do navegador não funciona em telas de toque. No celular
+  o quadro desliza com o dedo e o seletor de etapa de cada cartão continua sendo a
+  forma de mover.
+
+Validado contra o mock local (27 verificações): avançar uma etapa, pular etapas,
+voltar, persistência após recarregar, falha de gravação, conflito, bloqueio durante a
+gravação, rolagem até Perdido, nenhuma coluna cortada, arrastar com o quadro rolado e
+rolagem automática, larguras 320/390/768/1366/1920, lista ordenada. A regressão
+completa (17 páginas, 2 temas) não acusou problemas.
+
 ## Sistema de design
 
 - **Tokens** em `app/globals.css`: neutros `ink-*`, marca `korvix-*`, semânticos
