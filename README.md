@@ -20,6 +20,7 @@ Verificações (as mesmas da CI em `.github/workflows/ci.yml`):
 ```bash
 npx tsc --noEmit
 npm run lint
+npm test        # Vitest: permissões, datas, cálculos financeiros
 npm run build
 ```
 
@@ -77,6 +78,8 @@ numa réplica local do schema e das políticas de produção.
 
 `supabase/proposed/align_db_admin_with_app_rbac.sql` alinha o banco à regra do
 app (apenas a conta principal é administradora) e precisa de decisão antes.
+
+Matriz de auditoria e cobertura: `docs/AUDITORIA-E-COBERTURA.md`.
 
 ## Limitações conhecidas
 
