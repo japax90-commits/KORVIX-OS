@@ -79,19 +79,25 @@ export function calculateCashExits(movements: CashMovement[]) {
   return movements.filter((m) => m.direction === "saida").reduce((sum, m) => sum + n(m.amount), 0);
 }
 
-const excludedExpenseCategories = ["Comissão", "Comissões", "Pró-labore", "Imposto", "Impostos"];
+// Categorias comparadas sem acento/caixa ("Impostos" = "impostos" = "IMPOSTO").
+const normalizeCategory = (category: string | null | undefined) =>
+  String(category ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+
+const taxCategories = ["imposto", "impostos"];
+// Comissões, pró-labore e impostos têm indicador próprio e não contam como despesa operacional.
+const excludedExpenseCategories = ["comissao", "comissoes", "pro-labore", "pro labore", "prolabore", ...taxCategories];
 
 export function calculateOperationalExpenses(movements: CashMovement[]) {
   return movements
     .filter((m) => m.direction === "saida")
-    .filter((m) => !excludedExpenseCategories.includes(String(m.category ?? "")))
+    .filter((m) => !excludedExpenseCategories.includes(normalizeCategory(m.category)))
     .reduce((sum, m) => sum + n(m.amount), 0);
 }
 
 export function calculateTaxes(movements: CashMovement[]) {
   return movements
     .filter((m) => m.direction === "saida")
-    .filter((m) => ["Imposto", "Impostos"].includes(String(m.category ?? "")))
+    .filter((m) => taxCategories.includes(normalizeCategory(m.category)))
     .reduce((sum, m) => sum + n(m.amount), 0);
 }
 

@@ -15,16 +15,16 @@ export function StatCard({
   trend?: { positive: boolean; label: string };
 }) {
   return (
-    <div className="rounded-xl border border-ink-100 bg-white p-4 shadow-panel sm:p-5">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-ink-500">{label}</p>
+    <div className="min-w-0 rounded-xl border border-ink-100 bg-white p-4 shadow-panel sm:p-5">
+      <div className="flex items-start justify-between gap-2">
+        <p className="min-w-0 text-[13px] leading-snug text-ink-500 sm:text-sm">{label}</p>
         {Icon && (
-          <div className="rounded-lg bg-korvix-50 p-1.5 text-korvix-600">
+          <div className="shrink-0 rounded-lg bg-korvix-50 p-1.5 text-korvix-600">
             <Icon size={16} strokeWidth={2} />
           </div>
         )}
       </div>
-      <p className="mt-2 text-2xl font-semibold tracking-tight text-ink-900">
+      <p className="mt-2 break-words text-lg font-semibold tracking-tight text-ink-900 tabular-nums sm:text-2xl">
         {value}
       </p>
       {(helper || trend) && (

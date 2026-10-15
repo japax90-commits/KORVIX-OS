@@ -1,11 +1,15 @@
-import { Card, CardBody, CardHeader } from "@/components/ui/Card";
+import Link from "next/link";
+import { Card, CardHeader } from "@/components/ui/Card";
 import { StatCard } from "@/components/ui/StatCard";
 import { FinanceSubnav } from "./FinanceSubnav";
 import { StatusBadge } from "@/components/ui/Badge";
 import { DataTable, type Column } from "@/components/ui/Table";
-import { Wallet, TrendingDown, PiggyBank, AlertTriangle, Target, Receipt, BadgeDollarSign } from "lucide-react";
+import { PageHeader, ErrorState, SectionTitle } from "@/components/ui/PageHeader";
+import { Wallet, TrendingDown, PiggyBank, AlertTriangle, Target, Receipt, BadgeDollarSign, Landmark, Scale } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { KORVIX_PLANS } from "@/lib/business/plans";
+import { formatDate, formatMoney, humanize, isPastDay } from "@/lib/format";
+import { MONTHLY_CONTRACT_GOAL, isClosedThisMonth } from "@/lib/business/goals";
 import {
   calculateAverageTicket,
   calculateCashBalance,
@@ -21,8 +25,6 @@ import {
   calculateTaxes,
 } from "@/lib/finance/calculations";
 
-const money = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-
 export default async function FinanceiroPage() {
   const s = await createClient();
   const { data: { user } } = await s.auth.getUser();
@@ -37,7 +39,7 @@ export default async function FinanceiroPage() {
   ]);
 
   const error = paymentsError ?? commissionsError ?? contractsError ?? cashError ?? opportunitiesError;
-  if (error) return <div className="rounded-lg border border-red-200 bg-red-50 p-5 text-sm text-red-700">Erro ao carregar financeiro: {error.message}</div>;
+  if (error) return <ErrorState title="Erro ao carregar o financeiro" message={error.message} />;
 
   const rows = payments ?? [];
   const movements = cashMovements ?? [];
@@ -62,44 +64,54 @@ export default async function FinanceiroPage() {
     .map((c) => Number(c.value ?? 0))
     .filter((v) => v > 0);
   const ticket = calculateAverageTicket(wonContractValues);
-
-  const monthStart = new Date();
-  monthStart.setDate(1);
-  monthStart.setHours(0, 0, 0, 0);
-  const closedThisMonth = (contracts ?? []).filter((c) => c.status !== "cancelado" && new Date(c.created_at) >= monthStart).length;
-  const goal = 5;
-  const remaining = Math.max(goal - closedThisMonth, 0);
+  const closedThisMonth = (contracts ?? []).filter((c) => c.status !== "cancelado" && isClosedThisMonth(c.created_at)).length;
+  const remaining = Math.max(MONTHLY_CONTRACT_GOAL - closedThisMonth, 0);
 
   const columns: Column<(typeof rows)[number]>[] = [
-    { header: "Cliente", cell: (p) => p.client_name },
-    { header: "Tipo", cell: (p) => p.type, hideOnMobile: true },
-    { header: "Valor", cell: (p) => money(Number(p.amount)) },
-    { header: "Vencimento", cell: (p) => new Date(p.due_date).toLocaleDateString("pt-BR"), hideOnMobile: true },
-    { header: "Status", cell: (p) => <StatusBadge status={p.status} /> },
+    { header: "Cliente", cell: (p) => <span className="font-medium">{p.client_name}</span> },
+    { header: "Tipo", cell: (p) => humanize(p.type), hideOnMobile: true },
+    { header: "Valor", cell: (p) => formatMoney(p.amount) },
+    { header: "Vencimento", cell: (p) => formatDate(p.due_date), hideOnMobile: true },
+    { header: "Status", cell: (p) => <StatusBadge status={p.status === "pendente" && isPastDay(p.due_date) ? "atrasado" : p.status} /> },
   ];
 
   return (
     <div className="space-y-6">
-      <div><h2 className="text-xl font-semibold tracking-tight text-ink-900">Financeiro</h2><p className="text-sm text-ink-500">Visão financeira baseada nos dados reais da operação.</p></div>
+      <PageHeader title="Financeiro" description="Visão financeira baseada nos dados reais da operação." />
       <FinanceSubnav active="/financeiro" />
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="Receita recebida" value={money(revenue)} icon={Wallet} />
-        <StatCard label="Receita prevista" value={money(forecast)} icon={Receipt} />
-        <StatCard label="MRR" value={money(mrr)} icon={BadgeDollarSign} />
-        <StatCard label="Inadimplência" value={money(overdue)} icon={AlertTriangle} />
-        <StatCard label="Comissões" value={money(commissionTotal)} icon={TrendingDown} />
-        <StatCard label="Despesas" value={money(expenses)} icon={TrendingDown} />
-        <StatCard label="Impostos" value={money(taxes)} icon={TrendingDown} />
-        <StatCard label="Pró-labore (20%)" value={money(proLabore)} icon={PiggyBank} />
-        <StatCard label="Lucro líquido" value={money(netProfit)} icon={PiggyBank} />
-        <StatCard label="Saldo em caixa" value={money(cashBalance)} icon={Wallet} />
-        <StatCard label="Contratos no mês" value={`${closedThisMonth}/${goal}`} icon={Target} />
-        <StatCard label="Faltam para meta" value={String(remaining)} icon={Target} />
-        <StatCard label="Conversão" value={`${conversion.toFixed(1)}%`} icon={Target} />
-        <StatCard label="Ticket médio" value={money(ticket)} icon={BadgeDollarSign} />
-      </div>
-      <Card><CardHeader title="Indicadores comerciais" subtitle="Contratos fechados e ticket médio" /><CardBody className="grid grid-cols-1 gap-3 sm:grid-cols-3"><div><p className="text-xs text-ink-500">Contratos fechados</p><p className="text-xl font-semibold">{won.length}</p></div><div><p className="text-xs text-ink-500">Ticket médio</p><p className="text-xl font-semibold">{money(ticket)}</p></div><div><p className="text-xs text-ink-500">Planos de referência</p><p className="text-xl font-semibold">{money(KORVIX_PLANS.Essencial.price)} · {money(KORVIX_PLANS.Intermediário.price)} · {money(KORVIX_PLANS.Completo.price)}</p></div></CardBody></Card>
-      <Card><CardHeader title="Últimos pagamentos" subtitle="Pagamentos reais armazenados no Supabase" /><DataTable columns={columns} rows={rows} emptyLabel="Nenhum pagamento registrado." /></Card>
+      <section>
+        <SectionTitle icon={<Wallet size={15} />}>Receita</SectionTitle>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <StatCard label="Receita recebida" value={formatMoney(revenue)} icon={Wallet} />
+          <StatCard label="Receita prevista" value={formatMoney(forecast)} icon={Receipt} helper="Pendentes + atrasados" />
+          <StatCard label="MRR" value={formatMoney(mrr)} icon={BadgeDollarSign} helper="Contratos ativos" />
+          <StatCard label="Inadimplência" value={formatMoney(overdue)} icon={AlertTriangle} />
+        </div>
+      </section>
+      <section>
+        <SectionTitle icon={<Scale size={15} />}>Resultado</SectionTitle>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
+          <StatCard label="Comissões" value={formatMoney(commissionTotal)} icon={TrendingDown} />
+          <StatCard label="Despesas" value={formatMoney(expenses)} icon={TrendingDown} />
+          <StatCard label="Impostos" value={formatMoney(taxes)} icon={Landmark} />
+          <StatCard label="Pró-labore (20%)" value={formatMoney(proLabore)} icon={PiggyBank} />
+          <StatCard label="Lucro líquido" value={formatMoney(netProfit)} icon={PiggyBank} />
+          <StatCard label="Saldo em caixa" value={formatMoney(cashBalance)} icon={Wallet} />
+        </div>
+      </section>
+      <section>
+        <SectionTitle icon={<Target size={15} />}>Comercial</SectionTitle>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <StatCard label="Contratos no mês" value={`${closedThisMonth}/${MONTHLY_CONTRACT_GOAL}`} icon={Target} helper={remaining ? `Faltam ${remaining} para a meta` : "Meta atingida"} />
+          <StatCard label="Conversão" value={`${conversion.toFixed(1)}%`} icon={Target} helper={`${won.length} ganhas · ${lost.length} perdidas`} />
+          <StatCard label="Ticket médio" value={formatMoney(ticket)} icon={BadgeDollarSign} />
+          <StatCard label="Planos de referência" value={`${KORVIX_PLANS.Essencial.price.toLocaleString("pt-BR")} · ${KORVIX_PLANS.Intermediário.price.toLocaleString("pt-BR")} · ${KORVIX_PLANS.Completo.price.toLocaleString("pt-BR")}`} helper="Essencial · Intermediário · Completo (R$)" />
+        </div>
+      </section>
+      <Card>
+        <CardHeader title="Últimos pagamentos" subtitle="10 mais recentes por vencimento" action={<Link href="/financeiro/pagamentos" className="text-sm font-medium text-korvix-600 hover:text-korvix-800">Ver todos</Link>} />
+        <DataTable columns={columns} rows={rows.slice(0, 10)} emptyLabel="Nenhum pagamento registrado." />
+      </Card>
     </div>
   );
 }
