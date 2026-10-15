@@ -40,7 +40,7 @@ function TaskModal({ open, onClose, task, userId, userName, users, isAdmin }: { 
       footer={<><button type="button" onClick={onClose} className={buttonClass("secondary")}>Cancelar</button><button type="submit" form={`task-${task?.id ?? "new"}`} disabled={busy} className={buttonClass("primary")}>{busy ? "Salvando..." : task ? "Salvar" : "Criar tarefa"}</button></>}
     >
       <form id={`task-${task?.id ?? "new"}`} onSubmit={onSubmitForm(submit)} className="grid gap-4 sm:grid-cols-2">
-        <Field label="Tarefa" className="sm:col-span-2" error={fieldErrors.title}><Input name="title" defaultValue={task?.title} required autoFocus /></Field>
+        <Field label="Tarefa" className="sm:col-span-2" error={fieldErrors.title}><Input name="title" defaultValue={task?.title} required /></Field>
         <Field label="Responsável" hint={isAdmin ? undefined : "Somente a administração distribui tarefas."} error={fieldErrors.assigned_to_id}>
           <Select name="assigned_to_id" defaultValue={task?.assigned_to_id ?? userId} disabled={!isAdmin}>
             {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}

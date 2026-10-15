@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { canAccessModule, isKorvixAdmin } from "@/lib/auth/permissions";
 import { ClientEditButton } from "@/components/operations/ClientForm";
 import { formatDate, formatDateTime, formatMoney, humanize } from "@/lib/format";
+import { FREQUENCIES, PAYMENT_TYPES, optionLabel } from "@/lib/options";
 import { requireModule } from "@/lib/auth/server";
 
 function Empty({ children }: { children: React.ReactNode }) {
@@ -76,7 +77,7 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
           <CardHeader title="Contratos" />
           <CardBody className="space-y-3">
             {!finance ? restricted : <>
-              {(contracts ?? []).map((c) => <Row key={c.id} title={c.plan_name} meta={`${formatMoney(c.value)} · ${humanize(c.frequency)} · próxima cobrança ${formatDate(c.next_billing_date)}`} badge={<StatusBadge status={c.overdue ? "atrasado" : c.status} />} />)}
+              {(contracts ?? []).map((c) => <Row key={c.id} title={c.plan_name} meta={`${formatMoney(c.value)} · ${optionLabel(FREQUENCIES, c.frequency)} · próxima cobrança ${formatDate(c.next_billing_date)}`} badge={<StatusBadge status={c.overdue ? "atrasado" : c.status} />} />)}
               {!contracts?.length && <Empty>Nenhum contrato registrado.</Empty>}
             </>}
           </CardBody>
@@ -85,7 +86,7 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
           <CardHeader title="Financeiro" subtitle={finance ? `Contrato ativo: ${client.active_contract_value ? formatMoney(client.active_contract_value) : "—"}` : undefined} />
           <CardBody className="space-y-3">
             {!finance ? restricted : <>
-              {(payments ?? []).map((p) => <Row key={p.id} title={formatMoney(p.amount)} meta={`${humanize(p.type)} · vencimento ${formatDate(p.due_date)}${p.paid_at ? ` · pago em ${formatDate(p.paid_at)}` : ""}`} badge={<StatusBadge status={p.status} />} />)}
+              {(payments ?? []).map((p) => <Row key={p.id} title={formatMoney(p.amount)} meta={`${optionLabel(PAYMENT_TYPES, p.type)} · vencimento ${formatDate(p.due_date)}${p.paid_at ? ` · pago em ${formatDate(p.paid_at)}` : ""}`} badge={<StatusBadge status={p.status} />} />)}
               {!payments?.length && <Empty>Nenhum pagamento registrado.</Empty>}
               {(commissions ?? []).length > 0 && (
                 <div className="border-t border-ink-100 pt-3">

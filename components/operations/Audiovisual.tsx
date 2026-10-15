@@ -49,7 +49,7 @@ function DemandModal({ open, onClose, demand, users, clients, userId, userName }
     >
       <form id={`av-${demand?.id ?? "new"}`} onSubmit={onSubmitForm(submit)} className="grid gap-4 sm:grid-cols-2">
         <Field label="Cliente" className="sm:col-span-2" error={fieldErrors.client_name}>
-          <Input name="client_name" list="av-clients" defaultValue={demand?.client_name} required autoFocus />
+          <Input name="client_name" list="av-clients" defaultValue={demand?.client_name} required />
           <datalist id="av-clients">{clients.map((c) => <option key={c} value={c} />)}</datalist>
         </Field>
         <Field label="Tipo de conteúdo" className="sm:col-span-2" error={fieldErrors.demand_type}><Input name="demand_type" defaultValue={demand?.demand_type ?? ""} placeholder="Ex.: Reels, fotos de produto, vídeo institucional" required /></Field>

@@ -68,7 +68,7 @@ function EventModal({ open, onClose, event, userId, userName, users, isAdmin }: 
       footer={<><button type="button" onClick={onClose} className={buttonClass("secondary")}>Cancelar</button><button type="submit" form={`event-${event?.id ?? "new"}`} disabled={busy} className={buttonClass("primary")}>{busy ? "Salvando..." : event ? "Salvar" : "Criar evento"}</button></>}
     >
       <form id={`event-${event?.id ?? "new"}`} onSubmit={onSubmitForm(submit)} className="grid gap-4 sm:grid-cols-2">
-        <Field label="Título" className="sm:col-span-2" error={fieldErrors.title}><Input name="title" defaultValue={event?.title} required autoFocus /></Field>
+        <Field label="Título" className="sm:col-span-2" error={fieldErrors.title}><Input name="title" defaultValue={event?.title} required /></Field>
         <Field label="Tipo" error={fieldErrors.type}><Select name="type" defaultValue={event?.type ?? "reuniao"}>{TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}</Select></Field>
         <Field label="Status" error={fieldErrors.status}><Select name="status" defaultValue={event?.status ?? "agendado"}>{STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}</Select></Field>
         <Field label="Início" error={fieldErrors.start_at}><Input name="start_at" type="datetime-local" defaultValue={toDateTimeLocal(event?.start_at)} required /></Field>

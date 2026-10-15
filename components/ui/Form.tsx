@@ -37,14 +37,14 @@ export function Field({
   children: React.ReactNode;
 }) {
   const errorId = useId();
-  const control = error
-    ? Children.map(children, (child) =>
-        // Marca o controle (Input/Select/Textarea); ignora auxiliares como <datalist>.
-        isValidElement<Record<string, unknown>>(child) && child.type !== "datalist"
-          ? cloneElement(child, { "aria-invalid": true, "aria-describedby": errorId })
-          : child,
-      )
-    : children;
+  // Sempre via Children.map (chaves estáveis): alternar erro não pode remontar
+  // o campo, senão o valor digitado seria perdido.
+  const control = Children.map(children, (child) =>
+    // Marca o controle (Input/Select/Textarea); ignora auxiliares como <datalist>.
+    isValidElement<Record<string, unknown>>(child) && child.type !== "datalist"
+      ? cloneElement(child, { "aria-invalid": error ? true : undefined, "aria-describedby": error ? errorId : undefined })
+      : child,
+  );
   return (
     <label className={cn("block", className)}>
       <span className="mb-1.5 block text-sm font-medium text-ink-700">{label}</span>

@@ -60,7 +60,7 @@ function ClientModal({ open, onClose, client, currentUserId }: { open: boolean; 
       }
     >
       <form id="client-form" onSubmit={onSubmitForm(submit)} className="grid gap-4 sm:grid-cols-2">
-        <Field label="Empresa" className="sm:col-span-2" error={fieldErrors.company_name}><Input name="company_name" defaultValue={client?.company_name} required autoFocus /></Field>
+        <Field label="Empresa" className="sm:col-span-2" error={fieldErrors.company_name}><Input name="company_name" defaultValue={client?.company_name} required /></Field>
         <Field label="Contato" error={fieldErrors.contact_name}><Input name="contact_name" defaultValue={client?.contact_name} required /></Field>
         <Field label="Telefone" error={fieldErrors.phone}><Input name="phone" type="tel" defaultValue={client?.phone ?? ""} placeholder="(00) 00000-0000" /></Field>
         <Field label="Nicho" error={fieldErrors.niche}><Input name="niche" defaultValue={client?.niche ?? ""} /></Field>

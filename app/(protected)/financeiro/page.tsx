@@ -8,7 +8,8 @@ import { PageHeader, ErrorState, SectionTitle } from "@/components/ui/PageHeader
 import { Wallet, TrendingDown, PiggyBank, AlertTriangle, Target, Receipt, BadgeDollarSign, Landmark, Scale } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { KORVIX_PLANS } from "@/lib/business/plans";
-import { formatDate, formatMoney, humanize, isPastDay } from "@/lib/format";
+import { formatDate, formatMoney, isPastDay } from "@/lib/format";
+import { PAYMENT_TYPES, optionLabel } from "@/lib/options";
 import { MONTHLY_CONTRACT_GOAL, isClosedThisMonth } from "@/lib/business/goals";
 import {
   calculateAverageTicket,
@@ -71,7 +72,7 @@ export default async function FinanceiroPage() {
 
   const columns: Column<(typeof rows)[number]>[] = [
     { header: "Cliente", cell: (p) => <span className="font-medium">{p.client_name}</span> },
-    { header: "Tipo", cell: (p) => humanize(p.type), hideOnMobile: true },
+    { header: "Tipo", cell: (p) => optionLabel(PAYMENT_TYPES, p.type), hideOnMobile: true },
     { header: "Valor", cell: (p) => formatMoney(p.amount) },
     { header: "Vencimento", cell: (p) => formatDate(p.due_date), hideOnMobile: true },
     { header: "Status", cell: (p) => <StatusBadge status={p.status === "pendente" && isPastDay(p.due_date) ? "atrasado" : p.status} /> },

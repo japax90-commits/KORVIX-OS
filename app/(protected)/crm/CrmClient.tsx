@@ -60,7 +60,7 @@ export function NewOpportunityButton({ currentUserId, users, isAdmin = false }: 
         }
       >
         <form id="new-opportunity" onSubmit={onSubmitForm(submit)} className="space-y-4">
-          <Field label="Cliente" error={fieldErrors.client_name}><Input name="client_name" required placeholder="Nome do cliente ou empresa" autoFocus /></Field>
+          <Field label="Cliente" error={fieldErrors.client_name}><Input name="client_name" required placeholder="Nome do cliente ou empresa" /></Field>
           {isAdmin && (
             <Field label="Responsável" error={fieldErrors.origin_owner_id}>
               <Select name="origin_owner_id" defaultValue={currentUserId}>{users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</Select>

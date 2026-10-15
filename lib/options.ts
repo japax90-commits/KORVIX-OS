@@ -122,3 +122,9 @@ export const ROLES = [
   { value: "tecnico", label: "Técnico" },
   { value: "cto", label: "CTO" },
 ];
+
+/** Rótulo de exibição de um valor de lista (cai para o próprio valor se desconhecido). */
+export function optionLabel(list: { value: string; label: string }[], value: string | null | undefined) {
+  if (!value) return "—";
+  return list.find((o) => o.value === value)?.label ?? value;
+}
