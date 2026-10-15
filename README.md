@@ -40,6 +40,9 @@ components/
 lib/
   auth/permissions.ts   → regra única de acesso por módulo (menu, rotas e páginas)
   format.ts             → datas no fuso America/Sao_Paulo e moeda BRL
+  crm.ts                → etapas do funil e indicadores do CRM
+  table.ts              → ordenação e paginação por parâmetros da URL
+  theme/script.ts       → tema claro/escuro e menu recolhido aplicados antes da pintura
   options.ts            → listas de opções compartilhadas (status, tipos, papéis…)
   hooks/useAction.ts    → mutação padrão: carregando, erro amigável, router.refresh()
   finance/, business/   → cálculos financeiros, planos e meta mensal
@@ -79,7 +82,14 @@ numa réplica local do schema e das políticas de produção.
 `supabase/proposed/align_db_admin_with_app_rbac.sql` alinha o banco à regra do
 app (apenas a conta principal é administradora) e precisa de decisão antes.
 
-Matriz de auditoria e cobertura: `docs/AUDITORIA-E-COBERTURA.md`.
+Documentação: `docs/DIAGNOSTICO-INICIAL.md`, `docs/REGISTRO-DE-IMPLEMENTACAO.md`
+e `docs/AUDITORIA-E-COBERTURA.md`.
+
+### Design
+
+Tokens de cor em `app/globals.css` (tema claro e escuro); o Tailwind mapeia as
+classes para esses tokens. Use `bg-surface`, `bg-primary text-primary-fg`,
+`text-ink-*`, `text-danger` etc. — nunca cores fixas como `bg-white` ou `red-50`.
 
 ## Limitações conhecidas
 
