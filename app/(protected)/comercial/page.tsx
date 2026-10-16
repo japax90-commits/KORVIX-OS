@@ -3,13 +3,19 @@ import { StatusBadge } from "@/components/ui/Badge";
 import { DataTable, type Column } from "@/components/ui/Table";
 import { StatCard } from "@/components/ui/StatCard";
 import { PageHeader, ErrorState } from "@/components/ui/PageHeader";
-import { Trophy, TrendingDown, FileCheck, Check, Banknote } from "lucide-react";
+import Link from "next/link";
+import { Trophy, TrendingDown, FileCheck, Check, Banknote, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { KORVIX_PLANS } from "@/lib/business/plans";
 import { isKorvixAdmin } from "@/lib/auth/permissions";
 import { formatMoney } from "@/lib/format";
 import { CreateGoalButton, GoalActions } from "@/components/operations/Goals";
 import { requireModule } from "@/lib/auth/server";
+import { buttonClass } from "@/components/ui/Form";
+import { CommercialTabs } from "@/components/commercial/CommercialTabs";
+import { ServiceIcon } from "@/components/commercial/ServiceIcon";
+import { billingSuffix } from "@/lib/commercial/options";
+import { SERVICE_COLUMNS, isMissingTable, type Service } from "@/lib/commercial/types";
 
 export default async function ComercialPage() {
   await requireModule("comercial");
@@ -23,6 +29,14 @@ export default async function ComercialPage() {
     s.from("users").select("id,name").eq("active", true).order("name"),
   ]);
   if (error) return <ErrorState title="Erro ao carregar o comercial" message={error.message} />;
+  // Catálogo e propostas (migration 20261016120000). Sem a migration, mantém os planos do código.
+  const [{ data: catalog, error: catalogError }, { data: proposals }] = await Promise.all([
+    s.from("services").select(SERVICE_COLUMNS).eq("status", "ativo").order("featured", { ascending: false }).order("name"),
+    s.from("proposals").select("id,status"),
+  ]);
+  const catalogReady = !isMissingTable(catalogError) && !catalogError;
+  const featured = ((catalog ?? []) as unknown as Service[]).filter((x) => x.featured).slice(0, 6);
+  const openProposals = (proposals ?? []).filter((x) => ["rascunho", "enviada", "negociacao"].includes(x.status)).length;
   const admin = isKorvixAdmin(profile);
   const rows = opp ?? [];
   const closing = rows.filter((o) => ["proposta", "negociacao"].includes(o.stage));
@@ -41,14 +55,42 @@ export default async function ComercialPage() {
   ];
   return (
     <div className="space-y-6">
-      <PageHeader title="Comercial" description="Propostas, metas e perdas, alimentados pelo CRM." />
+      <PageHeader title="Comercial" description="Catálogo, propostas, metas e perdas, alimentados pelo CRM." />
+      <CommercialTabs active="geral" />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label="Em proposta/negociação" value={String(closing.length)} icon={FileCheck} />
         <StatCard label="Vendas fechadas" value={String(won.length)} icon={Trophy} />
         <StatCard label="Perdidas" value={String(lost.length)} icon={TrendingDown} />
         <StatCard label="Valor em negociação" value={formatMoney(closing.reduce((a, o) => a + Number(o.estimated_value || 0), 0))} icon={Banknote} />
       </div>
-      <Card>
+      {catalogReady ? (
+        <Card>
+          <CardHeader
+            title="Destaques do catálogo"
+            subtitle={`${(catalog ?? []).length} serviços e pacotes ativos · ${openProposals} proposta(s) em aberto`}
+            action={<div className="flex gap-2"><Link href="/comercial/catalogo" className={buttonClass("secondary", undefined, "sm")}>Ver catálogo</Link><Link href="/comercial/propostas/nova" className={buttonClass("primary", undefined, "sm")}><Plus size={14} /> Nova proposta</Link></div>}
+          />
+          <CardBody>
+            {featured.length ? (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {featured.map((svc) => (
+                  <Link key={svc.id} href={`/comercial/propostas/nova?servico=${svc.id}`} className="focus-ring flex gap-3 rounded-xl border border-ink-200 p-4 transition-colors hover:border-korvix-300">
+                    <ServiceIcon icon={svc.icon} imageUrl={svc.image_url} />
+                    <div className="min-w-0">
+                      <p className="font-semibold text-ink-900">{svc.name}</p>
+                      <p className="text-sm font-bold tabular-nums text-korvix-700">{formatMoney(svc.price)}<span className="text-xs font-normal text-ink-500">{billingSuffix(svc.billing_type, svc.billing_unit)}</span></p>
+                      {svc.short_description && <p className="mt-1 line-clamp-2 text-xs text-ink-500">{svc.short_description}</p>}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-ink-500">Nenhum serviço marcado como destaque. Marque “Destaque comercial” no catálogo.</p>
+            )}
+          </CardBody>
+        </Card>
+      ) : (
+        <Card>
         <CardHeader title="Planos KORVIX DIGITAL" subtitle="Tabela comercial oficial · tráfego pago cobrado à parte" />
         <CardBody>
           <div className="grid gap-4 md:grid-cols-3">
@@ -67,8 +109,9 @@ export default async function ComercialPage() {
           </div>
         </CardBody>
       </Card>
+      )}
       <Card>
-        <CardHeader title="Propostas e negociações" subtitle={`${closing.length} em andamento`} />
+        <CardHeader title="Oportunidades em proposta e negociação (CRM)" subtitle={`${closing.length} em andamento`} />
         <DataTable columns={columns} rows={closing} emptyLabel="Nenhuma proposta em andamento." />
       </Card>
       <Card>

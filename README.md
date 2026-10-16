@@ -41,6 +41,7 @@ lib/
   auth/permissions.ts   → regra única de acesso por módulo (menu, rotas e páginas)
   format.ts             → datas no fuso America/Sao_Paulo e moeda BRL
   crm.ts                → etapas do funil e indicadores do CRM
+  commercial/           → catálogo e propostas: opções, cálculo dos totais, tipos
   table.ts              → ordenação e paginação por parâmetros da URL
   theme/script.ts       → tema claro/escuro e menu recolhido aplicados antes da pintura
   options.ts            → listas de opções compartilhadas (status, tipos, papéis…)
@@ -79,10 +80,15 @@ A migration `supabase/migrations/20261015120000_fix_finance_rpcs_and_tighten_rls
 *Editar pagamento* continuam falhando com "permissão negada". Ela foi validada
 numa réplica local do schema e das políticas de produção.
 
+A migration `supabase/migrations/20261016120000_commercial_catalog_and_proposals.sql`
+(catálogo de serviços e propostas) **também aguarda autorização**. Até ser aplicada,
+as telas de Catálogo e Propostas mostram um aviso e a visão geral do Comercial
+continua com os planos do código. Detalhes e passo a passo: `docs/COMERCIAL.md`.
+
 `supabase/proposed/align_db_admin_with_app_rbac.sql` alinha o banco à regra do
 app (apenas a conta principal é administradora) e precisa de decisão antes.
 
-Documentação: `docs/DIAGNOSTICO-INICIAL.md`, `docs/REGISTRO-DE-IMPLEMENTACAO.md`
+Documentação: `docs/COMERCIAL.md`, `docs/DIAGNOSTICO-INICIAL.md`, `docs/REGISTRO-DE-IMPLEMENTACAO.md`
 e `docs/AUDITORIA-E-COBERTURA.md`.
 
 ### Design

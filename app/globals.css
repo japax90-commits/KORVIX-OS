@@ -131,6 +131,57 @@
   @apply outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface;
 }
 
+/* Impressão / PDF da proposta: só o documento, sempre com as cores do tema claro. */
+@media print {
+  .dark {
+    color-scheme: light;
+
+    /* Neutros */
+    --ink-50: 248 250 252;
+    --ink-100: 241 245 249;
+    --ink-200: 226 232 240;
+    --ink-300: 203 213 225;
+    --ink-400: 148 163 184;
+    --ink-500: 100 116 139;
+    --ink-600: 71 85 105;
+    --ink-700: 51 65 85;
+    --ink-900: 11 18 32;
+
+    /* Marca */
+    --korvix-50: 244 248 254;
+    --korvix-100: 228 237 252;
+    --korvix-200: 183 209 247;
+    --korvix-300: 127 173 239;
+    --korvix-400: 76 134 224;
+    --korvix-500: 46 92 184;
+    --korvix-600: 34 70 138;
+    --korvix-700: 26 53 104;
+    --korvix-800: 18 38 80;
+    --korvix-850: 14 28 63;
+    --korvix-900: 10 21 48;
+    --korvix-950: 5 11 24;
+
+    /* Semânticos */
+    --canvas: 241 245 249;
+    --surface: 255 255 255;
+    --nav: 10 21 48;
+    --primary: 37 99 235;
+    --primary-hover: 29 78 216;
+    --primary-fg: 255 255 255;
+    --success: 21 128 61;
+    --warning: 180 83 9;
+    --danger: 200 50 45;
+    --info: 37 99 235;
+
+    --shadow-panel: 0 1px 2px rgb(10 21 48 / 0.05), 0 6px 20px -12px rgb(10 21 48 / 0.16);
+    --shadow-overlay: 0 20px 50px -12px rgb(10 21 48 / 0.35);
+  }
+  body * { visibility: hidden; }
+  .proposal-document, .proposal-document * { visibility: visible; }
+  .proposal-document { position: absolute; inset: 0 auto auto 0; width: 100%; }
+  @page { margin: 16mm; }
+}
+
 /* Respeita a preferência do sistema por menos movimento */
 @media (prefers-reduced-motion: reduce) {
   *,
