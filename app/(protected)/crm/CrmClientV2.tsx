@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Archive, CalendarClock, ChevronLeft, ChevronRight, Search, Trash2, UserPlus } from "lucide-react";
+import { Archive, CalendarClock, ChevronLeft, ChevronRight, FileText, Search, Trash2, UserPlus } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { friendlyError } from "@/lib/hooks/useAction";
 import { formatDateTime, formatMoney, fromDateTimeLocal, toDateTimeLocal, todayISO } from "@/lib/format";
@@ -11,6 +11,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Field, FormError, IconButton, Input, Select, Textarea, buttonClass, inputClass } from "@/components/ui/Form";
 
 import { cn } from "@/lib/utils";
+import { StatusBadge } from "@/components/ui/Badge";
 import { STAGES, STAGE_LABELS, STAGE_PROBABILITY, normalizeStage, type Stage } from "@/lib/crm";
 import { CHANNELS, PRIORITIES } from "@/lib/options";
 import { useConfirm, useToast } from "@/components/ui/Feedback";
@@ -42,7 +43,7 @@ type User = { id: string; name: string };
 type ClientRef = { id: string; company_name: string };
 const normalizeName = (name: string) => name.trim().toLowerCase();
 
-export function CrmClientV2({ opportunities, users, currentUserId, isAdmin = false, clients = [], openLeadId }: { opportunities: Row[]; users: User[]; currentUserId: string; isAdmin?: boolean; clients?: ClientRef[]; openLeadId?: string }) {
+export function CrmClientV2({ opportunities, users, currentUserId, isAdmin = false, clients = [], openLeadId, canPropose = false, proposalsByLead = {} }: { opportunities: Row[]; users: User[]; currentUserId: string; isAdmin?: boolean; clients?: ClientRef[]; openLeadId?: string; canPropose?: boolean; proposalsByLead?: Record<string, { id: string; code: string; status: string }[]> }) {
   const confirmDialog = useConfirm();
   const toast = useToast();
   const [clientList, setClientList] = useState(clients);
@@ -435,6 +436,7 @@ export function CrmClientV2({ opportunities, users, currentUserId, isAdmin = fal
         size="lg"
         footer={
           <>
+            {canPropose && selected && <Link href={`/comercial/propostas/nova?oportunidade=${selected.id}`} className={buttonClass("ghost", "sm:mr-auto")}><FileText size={15} /> Criar proposta</Link>}
             <button type="button" onClick={() => setSelected(null)} className={buttonClass("secondary")}>Cancelar</button>
             <button type="submit" form="edit-opportunity" disabled={saving} className={buttonClass("primary")}>{saving ? "Salvando..." : "Salvar alterações"}</button>
           </>
@@ -462,6 +464,14 @@ export function CrmClientV2({ opportunities, users, currentUserId, isAdmin = fal
             <Field label="Próxima ação" className="md:col-span-2" error={fieldErrors.next_action}><Input name="next_action" defaultValue={selected.next_action || ""} placeholder="Ex.: enviar proposta revisada" /></Field>
             {lossStage === "perdido" && (
               <Field label="Motivo da perda" className="md:col-span-2" error={fieldErrors.loss_reason}><Textarea name="loss_reason" defaultValue={selected.loss_reason || ""} required /></Field>
+            )}
+            {(proposalsByLead[selected.id] ?? []).length > 0 && (
+              <div className="md:col-span-2">
+                <p className="mb-1.5 text-sm font-medium text-ink-700">Propostas deste lead</p>
+                <ul className="flex flex-wrap gap-2">
+                  {proposalsByLead[selected.id].map((p) => <li key={p.id}><Link href={`/comercial/propostas/${p.id}`} className="inline-flex items-center gap-2 rounded-lg border border-ink-200 px-2.5 py-1.5 text-xs hover:bg-ink-50"><FileText size={13} /> {p.code} <StatusBadge status={p.status} /></Link></li>)}
+                </ul>
+              </div>
             )}
             <div className="md:col-span-2"><FormError message={formError} /></div>
           </form>

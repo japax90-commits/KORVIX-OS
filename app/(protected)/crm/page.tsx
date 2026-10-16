@@ -56,6 +56,13 @@ export default async function CrmPage({ searchParams = {} }: { searchParams?: Se
   const followups = followupAgenda(rows);
   const todayEvents = (events ?? []).filter((e) => dayKey(e.start_at) === today && e.status !== "cancelado" && (!e.responsible_user_id || e.responsible_user_id === user.id));
   const view = searchParams.view === "lista" ? "lista" : "funil";
+  // Propostas vinculadas aos leads (tabela opcional até a migration do Comercial ser aplicada).
+  const canPropose = canAccessModule(current.profile, "comercial");
+  const { data: leadProposals } = canPropose && view === "funil"
+    ? await supabase.from("proposals").select("id,code,status,opportunity_id").not("opportunity_id", "is", null)
+    : { data: null };
+  const proposalsByLead: Record<string, { id: string; code: string; status: string }[]> = {};
+  for (const p of leadProposals ?? []) (proposalsByLead[p.opportunity_id as string] ??= []).push({ id: p.id, code: p.code, status: p.status });
   const userName = (id: string | null) => userRows.find((u) => u.id === id)?.name ?? "—";
   const shared = { userId: user.id, userName: current.profile.name || user.email, users: userRows, isAdmin: admin };
 
@@ -154,7 +161,7 @@ export default async function CrmPage({ searchParams = {} }: { searchParams?: Se
           ]}
         />
         {view === "funil" ? (
-          <CrmClientV2 opportunities={rows} users={userRows} currentUserId={user.id} isAdmin={admin} clients={clients ?? []} openLeadId={searchParams.lead} />
+          <CrmClientV2 opportunities={rows} users={userRows} currentUserId={user.id} isAdmin={admin} clients={clients ?? []} openLeadId={searchParams.lead} canPropose={canPropose} proposalsByLead={proposalsByLead} />
         ) : (
           <OpportunityList rows={rows} params={searchParams} users={userRows} admin={admin} userName={userName} />
         )}

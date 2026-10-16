@@ -9,6 +9,7 @@ import { ClientEditButton } from "@/components/operations/ClientForm";
 import { formatDate, formatDateTime, formatMoney, humanize } from "@/lib/format";
 import { FREQUENCIES, PAYMENT_TYPES, optionLabel } from "@/lib/options";
 import { requireModule } from "@/lib/auth/server";
+import { RECURRENCE_PERIODS } from "@/lib/commercial/options";
 
 function Empty({ children }: { children: React.ReactNode }) {
   return <p className="text-sm text-ink-500">{children}</p>;
@@ -49,6 +50,11 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
     s.from("tasks").select("id,title,status,priority,due_date").eq("related_entity_label", client.company_name).order("due_date"),
     s.from("users").select("id,name").in("id", [client.origin_owner_id, client.account_manager_id].filter(Boolean)),
   ]);
+  // Propostas do cliente (RLS: o vendedor vê as próprias; a administração, todas).
+  const commercial = canAccessModule(profile, "comercial");
+  const { data: proposals } = commercial
+    ? await s.from("proposals").select("id,code,title,status,total_once,total_recurring,recurrence_period,updated_at").eq("client_id", client.id).order("updated_at", { ascending: false })
+    : { data: null };
   const person = (id: string | null) => people?.find((p) => p.id === id)?.name ?? "—";
   const restricted = <p className="flex items-center gap-2 text-sm text-ink-500"><Lock size={14} /> Disponível apenas para a administração.</p>;
 
@@ -73,6 +79,19 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
         </CardBody>
       </Card>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {commercial && proposals && (
+          <Card className="lg:col-span-2">
+            <CardHeader title="Propostas" subtitle={`${proposals.length} vinculada(s) a este cliente`} action={<Link href={`/comercial/propostas/nova?cliente=${client.id}`} className="text-sm font-medium text-korvix-600 hover:underline">Nova proposta</Link>} />
+            <CardBody className="space-y-3">
+              {proposals.map((p) => (
+                <Link key={p.id} href={`/comercial/propostas/${p.id}`} className="block">
+                  <Row title={`${p.code} · ${p.title}`} meta={[Number(p.total_recurring) ? `${formatMoney(p.total_recurring)}${RECURRENCE_PERIODS.find((r) => r.value === p.recurrence_period)?.suffix ?? ""}` : "", Number(p.total_once) ? `${formatMoney(p.total_once)} único` : "", `atualizada ${formatDate(p.updated_at)}`].filter(Boolean).join(" · ")} badge={<StatusBadge status={p.status} />} />
+                </Link>
+              ))}
+              {!proposals.length && <Empty>Nenhuma proposta para este cliente.</Empty>}
+            </CardBody>
+          </Card>
+        )}
         <Card>
           <CardHeader title="Contratos" />
           <CardBody className="space-y-3">

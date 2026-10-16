@@ -61,6 +61,13 @@ const statusToneMap: Record<string, Tone> = {
   FINALIZED: "success",
   PUBLISHED: "success",
   CANCELLED: "danger",
+  // Comercial (catálogo e propostas)
+  inativo: "neutral",
+  arquivado: "neutral",
+  rascunho: "neutral",
+  enviada: "info",
+  recusada: "danger",
+  expirada: "warning",
 };
 
 const statusLabelMap: Record<string, string> = {
@@ -104,6 +111,12 @@ const statusLabelMap: Record<string, string> = {
   FINALIZED: "Finalizado",
   PUBLISHED: "Publicado",
   CANCELLED: "Cancelado",
+  inativo: "Inativo",
+  arquivado: "Arquivado",
+  rascunho: "Rascunho",
+  enviada: "Enviada",
+  recusada: "Recusada",
+  expirada: "Expirada",
 };
 
 export function StatusBadge({ status }: { status: string }) {
