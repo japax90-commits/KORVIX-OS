@@ -80,25 +80,40 @@ Produção e banco de produção: **não alterados**.
 | `npx tsc --noEmit`, `npm run lint` | sem erros |
 | `npm test` (Vitest) | 52/52 (17 novos: cálculo, moeda, margem, transições) |
 | `npm run build` | sucesso |
-| Banco local (PostgreSQL 16 + migration real), `supabase/tests/commercial_catalog_and_proposals.test.sql` | 27 cenários: permissões, conflito, transições, bloqueio, idempotência de contrato e cobrança, tentativa de adulterar totais, FK de serviço usado, migration reaplicada sem duplicar |
+| Banco local (PostgreSQL 16 + migration real, com as mesmas permissões da produção), `supabase/tests/commercial_catalog_and_proposals.test.sql` | 27 cenários: permissões, conflito, transições, bloqueio, idempotência de contrato e cobrança, tentativa de adulterar totais, FK de serviço usado, migration reaplicada sem duplicar |
 | Navegador × banco local real (PostgREST + RLS), dados fictícios | 82/82 verificações: critérios 1–16 do pedido, 2 temas × 390/1366 px × 6 telas sem rolagem lateral nem erros |
 | Regressão das demais telas (simulador anterior) | 17 páginas × 6 larguras × 2 temas: 0 problemas; fluxos de CRM, clientes, financeiro e RBAC intactos |
 | Sem a migration aplicada | Telas novas mostram aviso; visão geral mantém os planos do código; CRM e clientes sem erro |
 
-Limitação: não foi possível testar contra o banco de produção, porque isso exigiria aplicar a migration (pendente de autorização) e gravar dados de teste em produção.
+Em produção não foram gravados dados de teste: as verificações rodaram em transação desfeita no final.
 
-## 6. Para ativar em produção (requer autorização)
+## 6. Aplicação em produção (16/10/2026, autorizada)
 
-1. Backup: Supabase → Database → Backups (ou `pg_dump` do schema `public`).
-2. Aplicar `supabase/migrations/20261016120000_commercial_catalog_and_proposals.sql` (SQL Editor ou `supabase db push`).
-3. Conferir:
-   ```sql
-   select count(*) from services;
-   select tablename, rowsecurity from pg_tables where tablename in ('services','service_categories','service_internals','proposals','proposal_items');
-   ```
-   Esperado: 9 linhas em `services` e RLS ativo nas cinco tabelas.
-4. Abrir o Preview, entrar e validar o catálogo e uma proposta de teste. Depois excluir o rascunho de teste.
-5. Reversão (só se nada tiver sido cadastrado): comandos no cabeçalho da migration.
+1. **Backup** antes de qualquer alteração: cópia completa das 14 tabelas e de 106 definições (políticas, funções, gatilhos, permissões) no schema `backup_20261016`, sem acesso pela API. Conferido por checksum (`md5`) contra os dados originais.
+2. **Aplicado**:
+   - tabelas `service_categories`, `services`, `service_internals`, `proposals` e `proposal_items`, com RLS ativo;
+   - gatilhos e travas;
+   - funções `save_service`, `create_contract_from_proposal` e `create_payment_from_proposal`;
+   - 12 das 15 políticas;
+   - 4 categorias e 9 serviços de exemplo.
+3. **Ajustes feitos na hora**, porque a produção difere da réplica local:
+   - `public.current_user_id()` não é executável por `authenticated`. Foi substituída por `private.is_active_user()`, sem alterar a função existente.
+   - `authenticated` não tinha `USAGE` no schema `private`. Foi concedido, porque as funções novas chamam `private.is_korvix_admin()`, como as políticas RLS já fazem. O schema continua fora da API (só `public` é exposto).
+   - A ferramenta de banco usada exige confirmação humana para comandos com DROP/REVOKE/DELETE. A migration foi reescrita sem DROP/REVOKE:
+     - gatilhos com `create or replace trigger`;
+     - políticas criadas só se não existirem;
+     - em vez de permissão por coluna, os gatilhos `proposals_a_protect` e `proposal_items_a_protect` bloqueiam gravação direta;
+     - os 27 testes de banco e os 82 de interface foram refeitos e passaram.
+4. **Verificado em produção**, dentro de uma transação desfeita no final:
+   - o admin lê e edita o catálogo;
+   - um usuário desconhecido não vê nem altera nada;
+   - oportunidades e usuários continuam idênticos ao backup.
+5. **Pendente de confirmação**: `supabase/manual/20261016_comercial_pendente_confirmacao.sql`, com a função `save_proposal` e 3 políticas de exclusão. Contêm a palavra DELETE e precisam de aprovação manual. Sem esse arquivo:
+   - não é possível salvar propostas;
+   - não é possível excluir serviços, categorias nem rascunhos (arquivar funciona).
+   Para aplicar, cole o arquivo no SQL Editor do Supabase e clique em Run. Ele é idempotente e não altera dados.
+6. **Remover o backup**, quando não for mais necessário: `drop schema backup_20261016 cascade;` (somente com a sua confirmação).
+7. **Reversão**: comandos no cabeçalho da migration, e `revoke usage on schema private from authenticated;`.
 
 ## 7. Pendências e limitações
 

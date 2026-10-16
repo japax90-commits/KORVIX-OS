@@ -24,10 +24,32 @@
 --   drop sequence if exists public.proposal_code_seq;
 --   drop function if exists private.touch_updated_at(), private.proposal_guard(),
 --     private.proposal_items_guard(), private.compute_proposal_totals(uuid),
---     private.link_proposal_finance(uuid, uuid, uuid);
+--     private.link_proposal_finance(uuid, uuid, uuid), private.proposal_protect(),
+--     private.proposal_items_protect(), private.trusted_write();
+--
+-- Sem DROP/REVOKE: pode ser reaplicada com segurança (tudo é "if not exists"
+-- ou "create or replace").
 -- =============================================================================
 
 create schema if not exists private;
+
+-- Funções auxiliares ficam em "private" (não exposto pela API). Usuários logados
+-- precisam de USAGE para que funções e gatilhos chamem as checagens de permissão
+-- (as políticas RLS existentes já usam private.is_korvix_admin()).
+grant usage on schema private to authenticated;
+
+-- Usuário logado e ativo (substitui public.current_user_id(), que não é
+-- executável por "authenticated" em produção).
+create or replace function private.is_active_user()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (select 1 from public.users u where u.id = auth.uid() and u.active = true);
+$$;
+grant execute on function private.is_active_user() to authenticated;
 
 -- updated_at / updated_by automáticos -----------------------------------------
 create or replace function private.touch_updated_at()
@@ -54,8 +76,7 @@ create table if not exists public.service_categories (
   updated_at timestamptz not null default now()
 );
 create unique index if not exists service_categories_name_key on public.service_categories (lower(btrim(name)));
-drop trigger if exists service_categories_touch on public.service_categories;
-create trigger service_categories_touch before update on public.service_categories
+create or replace trigger service_categories_touch before update on public.service_categories
   for each row execute function private.touch_updated_at();
 
 -- Serviços e pacotes ----------------------------------------------------------
@@ -94,8 +115,7 @@ create index if not exists services_status_idx on public.services (status);
 create index if not exists services_source_idx on public.services (source_service_id);
 create index if not exists services_created_by_idx on public.services (created_by);
 create index if not exists services_updated_by_idx on public.services (updated_by);
-drop trigger if exists services_touch on public.services;
-create trigger services_touch before update on public.services
+create or replace trigger services_touch before update on public.services
   for each row execute function private.touch_updated_at();
 
 -- Dados internos (custo e observações) — somente administração ---------------
@@ -105,8 +125,7 @@ create table if not exists public.service_internals (
   internal_notes text check (internal_notes is null or char_length(internal_notes) <= 5000),
   updated_at timestamptz not null default now()
 );
-drop trigger if exists service_internals_touch on public.service_internals;
-create trigger service_internals_touch before update on public.service_internals
+create or replace trigger service_internals_touch before update on public.service_internals
   for each row execute function private.touch_updated_at();
 
 -- Propostas -------------------------------------------------------------------
@@ -239,11 +258,9 @@ begin
   return new;
 end;
 $$;
-drop trigger if exists proposals_guard on public.proposals;
-create trigger proposals_guard before update on public.proposals
+create or replace trigger proposals_guard before update on public.proposals
   for each row execute function private.proposal_guard();
-drop trigger if exists proposals_touch on public.proposals;
-create trigger proposals_touch before update on public.proposals
+create or replace trigger proposals_touch before update on public.proposals
   for each row execute function private.touch_updated_at();
 
 create or replace function private.proposal_items_guard()
@@ -262,9 +279,53 @@ begin
   return coalesce(new, old);
 end;
 $$;
-drop trigger if exists proposal_items_guard on public.proposal_items;
-create trigger proposal_items_guard before insert or update or delete on public.proposal_items
+create or replace trigger proposal_items_guard before insert or update or delete on public.proposal_items
   for each row execute function private.proposal_items_guard();
+
+-- Travas contra gravação direta pela API --------------------------------------
+-- As funções desta migration marcam a transação como confiável
+-- (korvix.trusted, válido só até o fim da transação). Fora delas:
+--   * proposta não pode ser criada diretamente (use save_proposal);
+--   * na edição direta só o status (e a versão) podem mudar — totais, código,
+--     responsável e vínculos com contrato/cobrança ficam protegidos;
+--   * itens só mudam via save_proposal (exceto a exclusão em cascata).
+create or replace function private.trusted_write()
+returns boolean language sql stable set search_path = public as $$ select coalesce(current_setting('korvix.trusted', true), '') = 'on' $$;
+
+create or replace function private.proposal_protect()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if private.trusted_write() then return new; end if;
+  if tg_op = 'INSERT' then
+    raise exception 'Use o construtor de propostas para criar propostas.' using errcode = '42501';
+  end if;
+  if (to_jsonb(new) - array['status', 'version', 'updated_at', 'updated_by', 'sent_at', 'decided_at'])
+     is distinct from (to_jsonb(old) - array['status', 'version', 'updated_at', 'updated_by', 'sent_at', 'decided_at']) then
+    raise exception 'Somente o status pode ser alterado diretamente. Use o construtor de propostas para editar o conteúdo.' using errcode = '42501';
+  end if;
+  return new;
+end;
+$$;
+create or replace trigger proposals_a_protect before insert or update on public.proposals
+  for each row execute function private.proposal_protect();
+
+create or replace function private.proposal_items_protect()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if private.trusted_write() then return coalesce(new, old); end if;
+  -- Exclusão em cascata da proposta (rascunho): a linha-mãe já não existe.
+  if tg_op = 'DELETE' and not exists (select 1 from public.proposals where id = old.proposal_id) then return old; end if;
+  raise exception 'Os itens só podem ser alterados pelo construtor de propostas.' using errcode = '42501';
+end;
+$$;
+create or replace trigger proposal_items_a_protect before insert or update or delete on public.proposal_items
+  for each row execute function private.proposal_items_protect();
 
 -- Cálculo dos totais (mesma regra de lib/commercial/calc.ts) -------------------
 create or replace function private.compute_proposal_totals(p_id uuid)
@@ -280,6 +341,7 @@ declare
   d_once numeric(12,2) := 0;
   d_rec numeric(12,2) := 0;
 begin
+  perform set_config('korvix.trusted', 'on', true);
   update public.proposal_items
      set line_total = greatest(round(quantity * unit_price, 2) - discount, 0)
    where proposal_id = p_id;
@@ -317,6 +379,7 @@ security definer
 set search_path = public
 as $$
 begin
+  perform set_config('korvix.trusted', 'on', true);
   if not private.is_korvix_admin() then
     raise exception 'Sem permissão.' using errcode = '42501';
   end if;
@@ -411,7 +474,8 @@ declare
   item jsonb;
   pos integer := 0;
 begin
-  if public.current_user_id() is null then
+  perform set_config('korvix.trusted', 'on', true);
+  if not private.is_active_user() then
     raise exception 'Sessão inválida ou usuário inativo.' using errcode = '42501';
   end if;
   if jsonb_typeof(coalesce(p->'items', '[]'::jsonb)) <> 'array' then
@@ -498,6 +562,7 @@ declare
   company text;
   cid uuid;
 begin
+  perform set_config('korvix.trusted', 'on', true);
   if not private.is_korvix_admin() then
     raise exception 'Somente a administração pode gerar contratos.' using errcode = '42501';
   end if;
@@ -530,6 +595,7 @@ declare
   company text;
   pay uuid;
 begin
+  perform set_config('korvix.trusted', 'on', true);
   if not private.is_korvix_admin() then
     raise exception 'Somente a administração pode lançar cobranças.' using errcode = '42501';
   end if;
@@ -560,79 +626,103 @@ alter table public.service_internals enable row level security;
 alter table public.proposals enable row level security;
 alter table public.proposal_items enable row level security;
 
-revoke all on public.service_categories, public.services, public.service_internals, public.proposals, public.proposal_items from anon;
-grant select, insert, update, delete on public.service_categories, public.services, public.service_internals to authenticated;
--- Propostas: totais, código, status inicial, responsável e vínculos financeiros
--- não podem ser gravados diretamente pelo navegador (só pelas funções acima).
-grant select, delete on public.proposals, public.proposal_items to authenticated;
-grant insert (request_id, title, client_id, client_name, opportunity_id, objective, description, recurrence_period,
-  discount_type, discount_value, discount_target, extra_fees, extra_fees_label, setup_fee, payment_terms,
-  delivery_terms, scope, deliverables, included, not_included, internal_notes, valid_until)
-  on public.proposals to authenticated;
-grant update (title, client_id, client_name, opportunity_id, status, objective, description, recurrence_period,
-  discount_type, discount_value, discount_target, extra_fees, extra_fees_label, setup_fee, payment_terms,
-  delivery_terms, scope, deliverables, included, not_included, internal_notes, valid_until, version)
-  on public.proposals to authenticated;
-grant insert (proposal_id, position, service_id, name, description, billing_type, recurring, quantity, unit_price, list_price, discount)
-  on public.proposal_items to authenticated;
-grant update (position, service_id, name, description, billing_type, recurring, quantity, unit_price, list_price, discount)
-  on public.proposal_items to authenticated;
+-- Privilégios de tabela (iguais aos padrões do Supabase). O acesso real é
+-- definido pelas políticas RLS abaixo e pelas travas de proposals_a_protect.
+grant select, insert, update, delete on public.service_categories, public.services, public.service_internals,
+  public.proposals, public.proposal_items to authenticated;
 grant usage on sequence public.proposal_code_seq to authenticated;
 
-drop policy if exists service_categories_select on public.service_categories;
-drop policy if exists service_categories_admin_insert on public.service_categories;
-drop policy if exists service_categories_admin_update on public.service_categories;
-drop policy if exists service_categories_admin_delete on public.service_categories;
-create policy service_categories_select on public.service_categories for select to authenticated using ((select public.current_user_id()) is not null);
-create policy service_categories_admin_insert on public.service_categories for insert to authenticated with check ((select private.is_korvix_admin()));
-create policy service_categories_admin_update on public.service_categories for update to authenticated using ((select private.is_korvix_admin())) with check ((select private.is_korvix_admin()));
-create policy service_categories_admin_delete on public.service_categories for delete to authenticated using ((select private.is_korvix_admin()));
-
-drop policy if exists services_select on public.services;
-drop policy if exists services_admin_insert on public.services;
-drop policy if exists services_admin_update on public.services;
-drop policy if exists services_admin_delete on public.services;
-create policy services_select on public.services for select to authenticated using ((select public.current_user_id()) is not null);
-create policy services_admin_insert on public.services for insert to authenticated with check ((select private.is_korvix_admin()));
-create policy services_admin_update on public.services for update to authenticated using ((select private.is_korvix_admin())) with check ((select private.is_korvix_admin()));
-create policy services_admin_delete on public.services for delete to authenticated using ((select private.is_korvix_admin()));
-
-drop policy if exists service_internals_admin_all on public.service_internals;
-create policy service_internals_admin_all on public.service_internals for all to authenticated using ((select private.is_korvix_admin())) with check ((select private.is_korvix_admin()));
-
-drop policy if exists proposals_owner_or_admin_select on public.proposals;
-drop policy if exists proposals_owner_insert on public.proposals;
-drop policy if exists proposals_owner_or_admin_update on public.proposals;
-drop policy if exists proposals_draft_delete on public.proposals;
-create policy proposals_owner_or_admin_select on public.proposals for select to authenticated
-  using ((select private.is_korvix_admin()) or created_by = (select auth.uid()));
-create policy proposals_owner_insert on public.proposals for insert to authenticated
-  with check ((select public.current_user_id()) is not null and created_by = (select auth.uid()));
-create policy proposals_owner_or_admin_update on public.proposals for update to authenticated
+do $p$ begin
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'service_categories' and policyname = 'service_categories_select') then
+    execute 'create policy service_categories_select on public.service_categories for select to authenticated using ((select private.is_active_user()))';
+  end if;
+end $p$;
+do $p$ begin
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'service_categories' and policyname = 'service_categories_admin_insert') then
+    execute 'create policy service_categories_admin_insert on public.service_categories for insert to authenticated with check ((select private.is_korvix_admin()))';
+  end if;
+end $p$;
+do $p$ begin
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'service_categories' and policyname = 'service_categories_admin_update') then
+    execute 'create policy service_categories_admin_update on public.service_categories for update to authenticated using ((select private.is_korvix_admin())) with check ((select private.is_korvix_admin()))';
+  end if;
+end $p$;
+do $p$ begin
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'service_categories' and policyname = 'service_categories_admin_delete') then
+    execute 'create policy service_categories_admin_delete on public.service_categories for delete to authenticated using ((select private.is_korvix_admin()))';
+  end if;
+end $p$;
+do $p$ begin
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'services' and policyname = 'services_select') then
+    execute 'create policy services_select on public.services for select to authenticated using ((select private.is_active_user()))';
+  end if;
+end $p$;
+do $p$ begin
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'services' and policyname = 'services_admin_insert') then
+    execute 'create policy services_admin_insert on public.services for insert to authenticated with check ((select private.is_korvix_admin()))';
+  end if;
+end $p$;
+do $p$ begin
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'services' and policyname = 'services_admin_update') then
+    execute 'create policy services_admin_update on public.services for update to authenticated using ((select private.is_korvix_admin())) with check ((select private.is_korvix_admin()))';
+  end if;
+end $p$;
+do $p$ begin
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'services' and policyname = 'services_admin_delete') then
+    execute 'create policy services_admin_delete on public.services for delete to authenticated using ((select private.is_korvix_admin()))';
+  end if;
+end $p$;
+do $p$ begin
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'service_internals' and policyname = 'service_internals_admin_all') then
+    execute 'create policy service_internals_admin_all on public.service_internals for all to authenticated using ((select private.is_korvix_admin())) with check ((select private.is_korvix_admin()))';
+  end if;
+end $p$;
+do $p$ begin
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'proposals' and policyname = 'proposals_owner_or_admin_select') then
+    execute 'create policy proposals_owner_or_admin_select on public.proposals for select to authenticated
+  using ((select private.is_korvix_admin()) or created_by = (select auth.uid()))';
+  end if;
+end $p$;
+do $p$ begin
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'proposals' and policyname = 'proposals_owner_insert') then
+    execute 'create policy proposals_owner_insert on public.proposals for insert to authenticated
+  with check ((select private.is_active_user()) and created_by = (select auth.uid()))';
+  end if;
+end $p$;
+do $p$ begin
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'proposals' and policyname = 'proposals_owner_or_admin_update') then
+    execute 'create policy proposals_owner_or_admin_update on public.proposals for update to authenticated
   using ((select private.is_korvix_admin()) or created_by = (select auth.uid()))
-  with check ((select private.is_korvix_admin()) or created_by = (select auth.uid()));
-create policy proposals_draft_delete on public.proposals for delete to authenticated
-  using (status = 'rascunho' and ((select private.is_korvix_admin()) or created_by = (select auth.uid())));
-
-drop policy if exists proposal_items_select on public.proposal_items;
-drop policy if exists proposal_items_write on public.proposal_items;
-create policy proposal_items_select on public.proposal_items for select to authenticated
-  using (exists (select 1 from public.proposals p where p.id = proposal_id and ((select private.is_korvix_admin()) or p.created_by = (select auth.uid()))));
-create policy proposal_items_write on public.proposal_items for all to authenticated
+  with check ((select private.is_korvix_admin()) or created_by = (select auth.uid()))';
+  end if;
+end $p$;
+do $p$ begin
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'proposals' and policyname = 'proposals_draft_delete') then
+    execute 'create policy proposals_draft_delete on public.proposals for delete to authenticated
+  using (status = ''rascunho'' and ((select private.is_korvix_admin()) or created_by = (select auth.uid())))';
+  end if;
+end $p$;
+do $p$ begin
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'proposal_items' and policyname = 'proposal_items_select') then
+    execute 'create policy proposal_items_select on public.proposal_items for select to authenticated
+  using (exists (select 1 from public.proposals p where p.id = proposal_id and ((select private.is_korvix_admin()) or p.created_by = (select auth.uid()))))';
+  end if;
+end $p$;
+do $p$ begin
+  if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'proposal_items' and policyname = 'proposal_items_write') then
+    execute 'create policy proposal_items_write on public.proposal_items for all to authenticated
   using (exists (select 1 from public.proposals p where p.id = proposal_id and ((select private.is_korvix_admin()) or p.created_by = (select auth.uid()))))
-  with check (exists (select 1 from public.proposals p where p.id = proposal_id and ((select private.is_korvix_admin()) or p.created_by = (select auth.uid()))));
+  with check (exists (select 1 from public.proposals p where p.id = proposal_id and ((select private.is_korvix_admin()) or p.created_by = (select auth.uid()))))';
+  end if;
+end $p$;
 
-revoke all on function public.save_service(jsonb) from public, anon;
-revoke all on function public.save_proposal(jsonb) from public, anon;
-revoke all on function public.create_contract_from_proposal(uuid, date, date) from public, anon;
-revoke all on function public.create_payment_from_proposal(uuid, date, text, text) from public, anon;
+-- As funções validam a permissão internamente (administração ou usuário ativo);
+-- as do schema private não são expostas pela API.
 grant execute on function public.save_service(jsonb) to authenticated;
 grant execute on function public.save_proposal(jsonb) to authenticated;
 grant execute on function public.create_contract_from_proposal(uuid, date, date) to authenticated;
 grant execute on function public.create_payment_from_proposal(uuid, date, text, text) to authenticated;
-revoke all on function private.compute_proposal_totals(uuid) from public, anon;
 grant execute on function private.compute_proposal_totals(uuid) to authenticated;
-revoke all on function private.link_proposal_finance(uuid, uuid, uuid) from public, anon;
 grant execute on function private.link_proposal_finance(uuid, uuid, uuid) to authenticated;
 
 -- Exemplos iniciais (editáveis; não duplica se já existirem) -------------------

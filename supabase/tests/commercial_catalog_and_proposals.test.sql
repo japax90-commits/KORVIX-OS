@@ -9,6 +9,7 @@ insert into users(id,name,email,role) values
  ('00000000-0000-0000-0000-000000000003','Vend B','b@x.com','vendedor');
 insert into clients(id,company_name,contact_name,phone) values ('10000000-0000-0000-0000-000000000001','ACME','Ana','1');
 \set ON_ERROR_STOP 0
+\set ON_ERROR_STOP 0
 \set ADMIN '00000000-0000-0000-0000-000000000001'
 \set A '00000000-0000-0000-0000-000000000002'
 \set B '00000000-0000-0000-0000-000000000003'
@@ -93,5 +94,5 @@ update proposal_items set line_total = 1;
 insert into proposals(title, client_name, status) values ('Direto','Z','aprovada');
 insert into proposals(title, client_name, total_once) values ('Direto','Z',1);
 update proposals set contract_id = gen_random_uuid() where title='Tamper';
-\echo T27 inserção direta permitida só com colunas de conteúdo (status padrão rascunho)
+\echo T27 inserção direta bloqueada (espera erro)
 insert into proposals(title, client_name) values ('Direto ok','Z') returning status, total_once;

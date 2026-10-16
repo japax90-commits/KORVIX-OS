@@ -81,9 +81,10 @@ A migration `supabase/migrations/20261015120000_fix_finance_rpcs_and_tighten_rls
 numa réplica local do schema e das políticas de produção.
 
 A migration `supabase/migrations/20261016120000_commercial_catalog_and_proposals.sql`
-(catálogo de serviços e propostas) **também aguarda autorização**. Até ser aplicada,
-as telas de Catálogo e Propostas mostram um aviso e a visão geral do Comercial
-continua com os planos do código. Detalhes e passo a passo: `docs/COMERCIAL.md`.
+(catálogo de serviços e propostas) **foi aplicada em produção em 16/10/2026**, com backup
+prévio no schema `backup_20261016`. Falta rodar no SQL Editor
+`supabase/manual/20261016_comercial_pendente_confirmacao.sql` (salvar propostas e excluir
+itens do catálogo). Detalhes: `docs/COMERCIAL.md`.
 
 `supabase/proposed/align_db_admin_with_app_rbac.sql` alinha o banco à regra do
 app (apenas a conta principal é administradora) e precisa de decisão antes.
